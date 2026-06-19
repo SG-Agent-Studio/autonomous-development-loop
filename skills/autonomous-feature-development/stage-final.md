@@ -57,4 +57,6 @@ Failed tasks:
 
 ## Step 4.4 — Branch completion
 
-Run `superpowers:finishing-a-development-branch`.
+Run `superpowers:finishing-a-development-branch`. If the `superpowers` plugin is
+not installed, stop here and tell the user to install it (see the plugin README) —
+do not improvise branch completion.

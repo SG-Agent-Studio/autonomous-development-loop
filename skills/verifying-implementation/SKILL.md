@@ -13,6 +13,14 @@ Tests passing is not done. When work has runtime behavior, the only honest evide
 
 Announce on use: _"I'm using verifying-implementation to gate this completion claim."_
 
+## Prerequisites (check before running)
+
+- **`superpowers`** (required) — this skill falls back to
+  `superpowers:verification-before-completion` when no Tier-3 trigger fires. If
+  it is not installed, stop and tell the user to install it (see the plugin README).
+- **playwright MCP** (required for UI verification) — bundled in this plugin's
+  `.mcp.json`. Without it, Tier 3 UI checks degrade to the user-confirmation fallback.
+
 ## When this skill fires (any one trigger = MUST run the gate)
 
 1. **Work touches a running service** — Backend, Docker, DB, Phoenix, UI, scheduled jobs, queues, anything with runtime process state.

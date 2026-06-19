@@ -7,6 +7,20 @@ description: Use after completing a brainstorming/planning session with plan and
 
 Fully autonomous development pipeline: parallel worktree implementation with TDD, verification, review, and fix loops. Also handles standalone post-review issue triage and fixing.
 
+## Prerequisites (check before running)
+
+This skill calls into other plugins that this one does not bundle. Before invoking
+a dependency, confirm it is installed. If it is unavailable, **stop and tell the
+user to install it** (see the plugin README) rather than failing silently:
+
+- **`superpowers`** (required) — used for branch completion
+  (`superpowers:finishing-a-development-branch`).
+- **`ponytail`** (optional) — used as one of three parallel reviewers in Stage 3
+  Mode A (`ponytail:ponytail-review`). If absent, skip that reviewer and proceed
+  with the remaining two.
+- **playwright MCP** (required for UI work) — used transitively by
+  `verifying-implementation` during Stage 2. Bundled in this plugin's `.mcp.json`.
+
 ## Mode Selection
 
 ```dot

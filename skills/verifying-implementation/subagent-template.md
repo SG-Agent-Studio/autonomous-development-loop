@@ -11,7 +11,7 @@ The dispatch prompt MUST contain ALL of:
 3. **What was built** — file paths and a one-line summary of the change at each. Diff is optional but helpful.
 4. **How to start the system** — exact command(s), required env vars, expected ready signal.
 5. **Where to observe** — URLs (UI, dashboards), log file paths, DB connection details, trace store endpoint.
-6. **Observation tools available** — `curl`, headless browser, user-in-the-loop fallback. State which.
+6. **Observation tools available** — `curl`, headless browser (the bundled **playwright** MCP), user-in-the-loop fallback. State which.
 7. **The Tier 3 procedure** — include `tier-3-procedure.md` content (or a link the subagent can read).
 
 If the dispatcher cannot fill all 7 fields, the missing ones are themselves a verification blocker. Surface to the user before dispatching.

@@ -15,7 +15,7 @@ Spawn 3 subagents **in parallel** (use Sonnet[1m] for each). Each reviews indepe
 | Agent | Skill |
 |-------|-------|
 | Reviewer A | `enhanced-review` |
-| Reviewer B | `ponytail:ponytail-review` |
+| Reviewer B | `ponytail:ponytail-review` (skip if `ponytail` plugin not installed) |
 | Reviewer C | `simplify` |
 
 Pass all three raw findings to a **consolidation agent**, which:
@@ -98,7 +98,9 @@ No merge commits should appear.
 
 **Mode A:** Read `./stage-final.md` and proceed to Stage 4.
 
-**Mode B:** Run `superpowers:finishing-a-development-branch`. Before that, print a brief summary:
+**Mode B:** Run `superpowers:finishing-a-development-branch` (requires the
+`superpowers` plugin — if absent, stop and tell the user to install it). Before
+that, print a brief summary:
 ```
 Fixed <N>/<total valid> issues.
 Skipped <N> invalid issues.

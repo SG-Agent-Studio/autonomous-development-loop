@@ -27,7 +27,7 @@ For each AC item and each edge case, perform the smallest action that exercises 
 | AC type       | Action                                                              | Evidence to capture                         |
 | ------------- | ------------------------------------------------------------------- | ------------------------------------------- |
 | HTTP API      | `curl` with realistic input                                         | status, headers, response body              |
-| UI            | Headless browser drive, OR ask user to confirm visually             | screenshot path or "user confirmed: yes/no" |
+| UI            | Headless browser drive (via the bundled **playwright** MCP), OR ask user to confirm visually | screenshot path or "user confirmed: yes/no" |
 | DB mutation   | Run `SELECT` after the action                                       | resulting row state                         |
 | Log / trace   | grep the log; query trace store; or open dashboard URL for the user | log line, trace ID, or "user confirmed"     |
 | Scheduled job | Trigger or wait for it                                              | resulting side effect                       |
