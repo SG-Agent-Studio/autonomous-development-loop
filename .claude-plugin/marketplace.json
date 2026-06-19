@@ -1,0 +1,18 @@
+{
+  "name": "autonomous-development",
+  "owner": {
+    "name": "Lee Jian Hong",
+    "email": "jiyue0904@gmail.com"
+  },
+  "metadata": {
+    "description": "Marketplace for the Autonomous Development Plugin.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "autonomous-development-plugin",
+      "source": "./",
+      "description": "Autonomous feature-development pipeline for Claude Code: parallel-worktree TDD implementation, fresh-subagent behavior verification, and Linus-style evidence-backed review."
+    }
+  ]
+}
