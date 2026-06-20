@@ -60,6 +60,102 @@ Working branch: <current-branch>
 
 ---
 
+
+## Orchestrator: Agent Output Schema and File Ownership
+
+**The orchestrator owns all `.loop-logs/` file writes. Agents own implementation and
+return content. This separation is the key to reliable bookkeeping.**
+
+### Task state lifecycle (orchestrator responsibility)
+
+Before calling each per-task agent, the orchestrator writes:
+
+```json
+{ "status": "in_progress", "worktree": ".worktrees/<task-id>" }
+```
+
+into `.loop-logs/tasks/<task-id>.json` (merging with the existing fields from Stage 0).
+
+After the agent returns, the orchestrator writes the final state from the agent's
+structured output (see schema below).
+
+When using the Workflow tool: The agent MUST NOT write to `.loop-logs/tasks/<task-id>.json` or `.loop-logs/logs/<task-id>.md`. The orchestrator performs those writes using the agent's structured output. In non-Workflow mode, see the fallback note below — agents write files directly via Steps B and D.
+
+### Required agent response schema
+
+When implementing Stage 1 via the Workflow tool, use the `schema` option on each
+`agent()` call. The agent must return:
+
+```json
+{
+  "status": "completed" | "failed",
+  "attempt_count": 2,
+  "attempt_logs": [
+    {
+      "attempt": 1,
+      "plan": "3-5 bullet points describing the approach",
+      "lint_output": "full lint stdout/stderr, or PASS",
+      "test_output": "full test stdout/stderr, or PASS",
+      "outcome": "success | failed — <one-line root cause> | HARD STOP after 3 attempts"
+    }
+  ]
+}
+```
+
+`attempt_logs` has one entry per TDD attempt. `attempt_count` ranges 1–3 (1 on first-pass success, 3 on hard stop). On hard stop (3 failures), `attempt_logs`
+has 3 entries and `status` is `"failed"`.
+
+### Orchestrator writes log file from schema output
+
+After each agent returns, the orchestrator writes `.loop-logs/logs/<task-id>.md` by
+formatting the `attempt_logs` array:
+
+```markdown
+# <task-id>
+
+## Attempt <N> — <timestamp>
+
+### Implementation plan
+
+<plan from attempt_logs[N].plan>
+
+### Lint output
+
+<lint_output>
+
+### Test output
+
+<test_output>
+
+### Outcome: <outcome>
+```
+
+Repeat one `## Attempt N` block per entry in `attempt_logs`.
+
+### Orchestrator writes task JSON from schema output
+
+After each agent returns, merge into `.loop-logs/tasks/<task-id>.json`:
+
+```json
+{
+  "status": "<from schema output>",
+  "attempt": <attempt_count from schema>,
+  "completed_steps": ["tdd-loop-complete"]
+}
+```
+
+If `status` is `"failed"`, omit `"tdd-loop-complete"` from `completed_steps`.
+
+---
+
+> **If not using the Workflow tool:** The agent prompt MUST include steps A–D from the
+> "Per-Task Agent Instructions" section below verbatim. The plan's implementation content
+> is additional context, not a replacement for those steps. In this mode the agent writes
+> the files directly as specified in steps B and D.
+
+
+---
+
 ## Stage 1: Parallel Implementation
 
 Spawn one worktree agent per task **simultaneously** — all at once, not sequentially. Each agent receives its `task_id` and the path to its task file: `.loop-logs/tasks/<task-id>.json`.
@@ -194,3 +290,35 @@ git branch -D worktree/<task-id>
 git log --oneline
 ```
 No merge commits should appear. If any do, the wrong merge strategy was used.
+
+---
+## Stage 1 Integrity Gate
+
+**This check is mandatory. Do not advance to Stage 2 until it passes.**
+
+Read every `.loop-logs/tasks/<task-id>.json` for all tasks parsed in Stage 0.
+
+**Check 1 — Status**
+Every task file must have `"status": "completed"` or `"status": "failed"`.
+Any file still showing `"status": "pending"` or `"status": "in_progress"` means the
+orchestrator or agent did not complete its bookkeeping.
+
+**Check 2 — Log files**
+Every task with `"status": "completed"` must have a corresponding file at
+`.loop-logs/logs/<task-id>.md`.
+
+**If either check fails**, print exactly:
+```
+STOP — Stage 1 integrity check failed.
+
+Missing or stale bookkeeping detected:
+<task-id>: status="pending" (expected: completed | failed)
+<task-id>: missing .loop-logs/logs/<task-id>.md
+```
+
+Do NOT proceed to Stage 2. Investigate which agent or orchestrator step was skipped.
+If using schema-enforced output, verify the orchestrator wrote the files after agent() returned.
+If agents wrote files directly, check the agent prompt included steps A–D verbatim.
+
+**If all checks pass:** Print `Integrity gate passed — advancing to Stage 2.` and proceed.
+
