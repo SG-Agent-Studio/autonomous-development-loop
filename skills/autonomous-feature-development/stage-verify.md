@@ -2,6 +2,12 @@
 
 Run the `verifying-implementation` skill: boot the system and exercise changed endpoints/paths. Match observed output against the acceptance criteria in `spec_path`.
 
+**After each verification run (pass or fail), write:**
+`.loop-logs/tasks/verification-state.json`:
+```json
+{ "rounds_completed": <N>, "last_outcome": "pass" | "fail", "notes": "<optional context>" }
+```
+
 **If verification passes:** Read `./stage-review-fix.md` and proceed to Stage 3.
 
 ---
@@ -17,11 +23,8 @@ Run the `verifying-implementation` skill: boot the system and exercise changed e
    git worktree remove .worktrees/verification-fix-<round> --force
    git branch -D worktree/verification-fix-<round>
    ```
-4. Update `.loop-logs/tasks/verification-state.json`:
-   ```json
-   { "rounds_completed": <N>, "last_outcome": "pass" | "fail" }
-   ```
-5. Re-run verification. Repeat up to **3 rounds total**.
+4. Re-run verification. Repeat up to **3 rounds total**.
+   (Write `verification-state.json` after each round — see above.)
 
 ---
 
