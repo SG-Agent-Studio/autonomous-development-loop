@@ -79,8 +79,7 @@ into `.loop-logs/tasks/<task-id>.json` (merging with the existing fields from St
 After the agent returns, the orchestrator writes the final state from the agent's
 structured output (see schema below).
 
-The agent MUST NOT write to `.loop-logs/tasks/<task-id>.json` or
-`.loop-logs/logs/<task-id>.md` itself. Those are orchestrator-only files.
+When using the Workflow tool: The agent MUST NOT write to `.loop-logs/tasks/<task-id>.json` or `.loop-logs/logs/<task-id>.md`. The orchestrator performs those writes using the agent's structured output. In non-Workflow mode, see the fallback note below — agents write files directly via Steps B and D.
 
 ### Required agent response schema
 
@@ -90,7 +89,7 @@ When implementing Stage 1 via the Workflow tool, use the `schema` option on each
 ```json
 {
   "status": "completed" | "failed",
-  "attempt_count": 1,
+  "attempt_count": 2,
   "attempt_logs": [
     {
       "attempt": 1,
@@ -103,7 +102,7 @@ When implementing Stage 1 via the Workflow tool, use the `schema` option on each
 }
 ```
 
-`attempt_logs` has one entry per TDD attempt. On hard stop (3 failures), `attempt_logs`
+`attempt_logs` has one entry per TDD attempt. `attempt_count` ranges 1–3 (1 on first-pass success, 3 on hard stop). On hard stop (3 failures), `attempt_logs`
 has 3 entries and `status` is `"failed"`.
 
 ### Orchestrator writes log file from schema output
@@ -308,13 +307,14 @@ orchestrator or agent did not complete its bookkeeping.
 Every task with `"status": "completed"` must have a corresponding file at
 `.loop-logs/logs/<task-id>.md`.
 
-**If either check fails:**
-
+**If either check fails**, print exactly:
+```
 STOP — Stage 1 integrity check failed.
 
 Missing or stale bookkeeping detected:
 <task-id>: status="pending" (expected: completed | failed)
 <task-id>: missing .loop-logs/logs/<task-id>.md
+```
 
 Do NOT proceed to Stage 2. Investigate which agent or orchestrator step was skipped.
 If using schema-enforced output, verify the orchestrator wrote the files after agent() returned.
