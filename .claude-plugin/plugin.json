@@ -1,6 +1,6 @@
 {
   "name": "autonomous-development-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Autonomous feature-development pipeline for Claude Code: parallel-worktree TDD implementation, fresh-subagent behavior verification, and Linus-style evidence-backed review.",
   "author": {
     "name": "Lee Jian Hong",
