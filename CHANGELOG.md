@@ -3,6 +3,13 @@
 All notable changes to this plugin are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Cursor plugin support — `.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json`,
+  and `mcp.json` ship alongside the Claude Code manifests. Both agents discover the
+  same `skills/` folder; no skill files are duplicated.
+
 ## [0.1.0] - 2026-06-20
 
 Initial release.

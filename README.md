@@ -5,9 +5,15 @@ parallel-worktree TDD implementation → behavior verification → evidence-back
 review → fix loops, plus standalone review and verification skills you can invoke
 on their own.
 
-> **Platform:** Claude Code only. The skills rely on Claude Code primitives
-> (the `Skill` tool, parallel subagent dispatch, and `git worktree`) that do not
-> exist in Cursor or Copilot. Cross-agent support is not provided.
+> **Platforms:** Claude Code **and** Cursor. Both read the same `skills/` folder
+> (identical `SKILL.md` format), so this single repo ships manifests for each:
+> `.claude-plugin/` + `.mcp.json` for Claude Code, `.cursor-plugin/` + `mcp.json`
+> for Cursor. The skills depend on agent primitives — cross-skill invocation,
+> subagent dispatch, and `git worktree`. Claude Code supports all of them; Cursor
+> supports subagents and `git worktree`, but its dispatch semantics differ and the
+> `superpowers`/`ponytail` dependencies below are not on the Cursor marketplace, so
+> some stages degrade to their built-in fallbacks (see Prerequisites). On Cursor,
+> treat first runs as a compatibility test, not a guarantee.
 
 ## Skills
 
@@ -35,6 +41,10 @@ project uses different commands.
 
 ## Installation
 
+This repo doubles as its own single-plugin marketplace for both agents.
+
+### Claude Code
+
 1. Install the `superpowers` plugin first (and `ponytail` if you use the full
    pipeline).
 2. Add this repo as a marketplace, then install the plugin:
@@ -42,9 +52,21 @@ project uses different commands.
    /plugin marketplace add <this-repo-url-or-path>
    /plugin install autonomous-development-plugin@autonomous-development
    ```
-   (This repo doubles as its own single-plugin marketplace — see
-   `.claude-plugin/marketplace.json`.)
+   (See `.claude-plugin/marketplace.json`.)
 3. Ensure `pnpm`/`pnpx` is available so the bundled playwright MCP can start.
+
+### Cursor
+
+1. Push this repo somewhere Cursor can reach it (any public/accessible Git URL).
+2. In Cursor, add it as a marketplace source and install the plugin — Cursor reads
+   `.cursor-plugin/marketplace.json` and `.cursor-plugin/plugin.json` from the repo
+   root, discovering the same `skills/` folder.
+3. Reload Cursor (**Developer: Reload Window**) and confirm the three skills appear
+   in settings.
+4. Ensure `pnpm`/`pnpx` is on PATH for the bundled playwright MCP (`mcp.json`).
+5. `superpowers` and `ponytail` are **not** on the Cursor marketplace. Their
+   skills are unavailable, so the stages that call them degrade to the built-in
+   fallbacks rather than failing (each skill says so when a dependency is missing).
 
 ## Usage
 
