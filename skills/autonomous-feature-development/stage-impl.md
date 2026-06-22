@@ -63,23 +63,25 @@ Working branch: <current-branch>
 
 ## Orchestrator: Agent Output Schema and File Ownership
 
-**The orchestrator owns all `.loop-logs/` file writes. Agents own implementation and
-return content. This separation is the key to reliable bookkeeping.**
+File writes are split by owner:
+
+| File | Owner |
+|------|-------|
+| `.loop-logs/tasks/<task-id>.json` | Orchestrator |
+| `.loop-logs/logs/<task-id>.md` | Agent (written directly, both Workflow and non-Workflow mode) |
+| `.loop-logs/error/<task-id>.md` | Agent (written directly, both Workflow and non-Workflow mode) |
+| `.loop-logs/logs/summary.md` | Orchestrator (Stage 4 only) |
 
 ### Task state lifecycle (orchestrator responsibility)
 
-Before calling each per-task agent, the orchestrator writes:
+Before calling each per-task agent, the orchestrator:
 
-```json
-{ "status": "in_progress", "worktree": ".worktrees/<task-id>" }
-```
+1. Writes `{ "status": "in_progress", "worktree": ".worktrees/<task-id>" }` into `.loop-logs/tasks/<task-id>.json` (merging with the existing fields from Stage 0).
+2. Computes the absolute repo root path (e.g. via `git rev-parse --show-toplevel`) and injects two paths into the agent's prompt:
+   - `LOG_PATH`: `<absolute-repo-root>/.loop-logs/logs/<task-id>.md`
+   - `ERROR_LOG_PATH`: `<absolute-repo-root>/.loop-logs/error/<task-id>.md`
 
-into `.loop-logs/tasks/<task-id>.json` (merging with the existing fields from Stage 0).
-
-After the agent returns, the orchestrator writes the final state from the agent's
-structured output (see schema below).
-
-When using the Workflow tool: The agent MUST NOT write to `.loop-logs/tasks/<task-id>.json` or `.loop-logs/logs/<task-id>.md`. The orchestrator performs those writes using the agent's structured output. In non-Workflow mode, see the fallback note below — agents write files directly via Steps B and D.
+After the agent returns, the orchestrator writes the final task state from the agent's structured output (see schema below).
 
 ### Required agent response schema
 
@@ -89,48 +91,11 @@ When implementing Stage 1 via the Workflow tool, use the `schema` option on each
 ```json
 {
   "status": "completed" | "failed",
-  "attempt_count": 2,
-  "attempt_logs": [
-    {
-      "attempt": 1,
-      "plan": "3-5 bullet points describing the approach",
-      "lint_output": "full lint stdout/stderr, or PASS",
-      "test_output": "full test stdout/stderr, or PASS",
-      "outcome": "success | failed — <one-line root cause> | HARD STOP after 3 attempts"
-    }
-  ]
+  "attempt_count": 2
 }
 ```
 
-`attempt_logs` has one entry per TDD attempt. `attempt_count` ranges 1–3 (1 on first-pass success, 3 on hard stop). On hard stop (3 failures), `attempt_logs`
-has 3 entries and `status` is `"failed"`.
-
-### Orchestrator writes log file from schema output
-
-After each agent returns, the orchestrator writes `.loop-logs/logs/<task-id>.md` by
-formatting the `attempt_logs` array:
-
-```markdown
-# <task-id>
-
-## Attempt <N> — <timestamp>
-
-### Implementation plan
-
-<plan from attempt_logs[N].plan>
-
-### Lint output
-
-<lint_output>
-
-### Test output
-
-<test_output>
-
-### Outcome: <outcome>
-```
-
-Repeat one `## Attempt N` block per entry in `attempt_logs`.
+`attempt_count` ranges 1–3 (1 on first-pass success, 3 on hard stop). Rich attempt detail (implementation plan, lint output, test output, outcomes) is written directly to `LOG_PATH` by the agent — it does not travel through the schema.
 
 ### Orchestrator writes task JSON from schema output
 
@@ -148,10 +113,9 @@ If `status` is `"failed"`, omit `"tdd-loop-complete"` from `completed_steps`.
 
 ---
 
-> **If not using the Workflow tool:** The agent prompt MUST include steps A–D from the
-> "Per-Task Agent Instructions" section below verbatim. The plan's implementation content
-> is additional context, not a replacement for those steps. In this mode the agent writes
-> the files directly as specified in steps B and D.
+**Both Workflow and non-Workflow mode:** The agent prompt MUST include steps A–D from
+the "Per-Task Agent Instructions" section below. Agents write `LOG_PATH` and
+`ERROR_LOG_PATH` directly in both modes — the orchestrator never writes those files.
 
 
 ---
