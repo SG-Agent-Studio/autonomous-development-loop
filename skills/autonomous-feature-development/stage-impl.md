@@ -140,6 +140,12 @@ git worktree add .worktrees/<task-id> -b worktree/<task-id>
 
 Switch working directory to `.worktrees/<task-id>` for ALL remaining steps. All bash commands, file reads, and git operations MUST run from within `.worktrees/<task-id>`.
 
+The orchestrator injects two absolute paths into this agent's prompt before spawning:
+- `LOG_PATH` — absolute path to `.loop-logs/logs/<task-id>.md` in the main repo root
+- `ERROR_LOG_PATH` — absolute path to `.loop-logs/error/<task-id>.md` in the main repo root
+
+Use these paths for all log writes in Step D. Never use relative paths for log files — the working directory is the worktree, not the repo root.
+
 Update task JSON: `"status": "in_progress"`, `"worktree": ".worktrees/<task-id>"`.
 
 #### Agent Step C — Read task content
@@ -148,7 +154,7 @@ From `plan_path`, read the full section for this task (from `### Task N: <name>`
 
 #### Agent Step D — TDD loop (max 3 attempts)
 
-**Before each attempt**, append to `.loop-logs/logs/<task-id>.md`:
+**Before each attempt**, append to `LOG_PATH`:
 ```markdown
 ## Attempt <N> — <ISO timestamp>
 ### Implementation plan
@@ -164,7 +170,7 @@ From `plan_path`, read the full section for this task (from `### Task N: <name>`
 
 **On pass (both green):**
 
-Append to log:
+Append to `LOG_PATH`:
 ```markdown
 ### Lint output
 PASS
@@ -185,16 +191,16 @@ Stop loop.
 
 **On fail:**
 
-Append full output to log (lint under `### Lint output`, tests under `### Test output`). Append `### Outcome: failed — <one-line root cause>`. Increment `attempt` in task JSON.
+Append full output to `LOG_PATH` (lint under `### Lint output`, tests under `### Test output`). Append `### Outcome: failed — <one-line root cause>`. Increment `attempt` in task JSON.
 
 - If `attempt < 3`: return to start of TDD loop (new attempt)
 - If `attempt == 3`: proceed to Hard Stop
 
 **Hard Stop (3 attempts exhausted):**
 
-Append `### Outcome: HARD STOP after 3 attempts` to log.
+Append `### Outcome: HARD STOP after 3 attempts` to `LOG_PATH`.
 
-Write `.loop-logs/error/<task-id>.md`:
+Write `ERROR_LOG_PATH`:
 ```markdown
 # Failed: <task-id>
 
