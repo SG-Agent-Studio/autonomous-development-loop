@@ -42,6 +42,7 @@ Remove `attempt_logs` from the required agent response schema. Agents write that
 ```
 
 The orchestrator uses only these two fields to write `.loop-logs/tasks/<task-id>.json`. It no longer formats a log file from schema output — that section is removed entirely.
+This is a breaking schema change — any existing Workflow `agent()` call that reads `attempt_logs` from the result must be updated to expect only `status` and `attempt_count`.
 
 ### Agent Prompt Changes
 

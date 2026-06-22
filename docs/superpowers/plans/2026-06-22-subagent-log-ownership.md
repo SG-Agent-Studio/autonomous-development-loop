@@ -19,7 +19,7 @@
 ### Task 1: Update orchestrator schema and ownership section
 
 **Files:**
-- Modify: `skills/autonomous-feature-development/stage-impl.md` (lines 64–157)
+- Modify: `skills/autonomous-feature-development/stage-impl.md`
 
 **Interfaces:**
 - Produces: `LOG_PATH` and `ERROR_LOG_PATH` concepts (absolute paths injected by orchestrator before spawning agents) — Task 2 references these.
@@ -38,9 +38,9 @@ Before editing, write these checks on paper (or mentally). After editing, verify
 [ ] Fallback note replaced with flat rule applying to both modes
 ```
 
-- [ ] **Step 2: Replace the ownership preamble (lines 66–82)**
+- [ ] **Step 2: Replace the ownership preamble**
 
-Find this block (lines 66–82):
+Find and replace the following block:
 ```
 **The orchestrator owns all `.loop-logs/` file writes. Agents own implementation and
 return content. This separation is the key to reliable bookkeeping.**
@@ -84,9 +84,9 @@ Before calling each per-task agent, the orchestrator:
 After the agent returns, the orchestrator writes the final task state from the agent's structured output (see schema below).
 ```
 
-- [ ] **Step 3: Shrink the required agent response schema (lines 84–106)**
+- [ ] **Step 3: Shrink the required agent response schema**
 
-Find this block (lines 84–106):
+Find and replace the following block:
 ```
 ### Required agent response schema
 
@@ -130,9 +130,9 @@ When implementing Stage 1 via the Workflow tool, use the `schema` option on each
 `attempt_count` ranges 1–3 (1 on first-pass success, 3 on hard stop). Rich attempt detail (implementation plan, lint output, test output, outcomes) is written directly to `LOG_PATH` by the agent — it does not travel through the schema.
 ```
 
-- [ ] **Step 4: Remove the "Orchestrator writes log file from schema output" section (lines 108–133)**
+- [ ] **Step 4: Remove the "Orchestrator writes log file from schema output" section**
 
-Find and delete this entire block (lines 108–133):
+Find and delete the following block:
 ```
 ### Orchestrator writes log file from schema output
 
@@ -164,9 +164,9 @@ Repeat one `## Attempt N` block per entry in `attempt_logs`.
 
 Delete the block entirely. Nothing replaces it.
 
-- [ ] **Step 5: Replace the fallback note with a flat rule (lines 149–154)**
+- [ ] **Step 5: Replace the fallback note with a flat rule**
 
-Find this block (lines 149–155, after the `---` separator):
+Find and replace the following block:
 ```
 > **If not using the Workflow tool:** The agent prompt MUST include steps A–D from the
 > "Per-Task Agent Instructions" section below verbatim. The plan's implementation content
@@ -185,13 +185,6 @@ the "Per-Task Agent Instructions" section below. Agents write `LOG_PATH` and
 
 Read the modified section (from `## Orchestrator: Agent Output Schema and File Ownership` to the `---` separator before `## Stage 1`). Tick off each item in the checklist. If any item fails, fix it before continuing.
 
-- [ ] **Step 7: Commit**
-
-```bash
-git add skills/autonomous-feature-development/stage-impl.md
-git commit -m "feat(skill): split log ownership — agents write logs, orchestrator owns task JSON"
-```
-
 ---
 
 ### Task 2: Update Per-Task Agent Instructions
@@ -199,7 +192,7 @@ git commit -m "feat(skill): split log ownership — agents write logs, orchestra
 **Depends on:** Task 1 (introduces `LOG_PATH` and `ERROR_LOG_PATH`)
 
 **Files:**
-- Modify: `skills/autonomous-feature-development/stage-impl.md` (lines 165–270)
+- Modify: `skills/autonomous-feature-development/stage-impl.md`
 
 **Interfaces:**
 - Consumes: `LOG_PATH`, `ERROR_LOG_PATH` — absolute paths injected by orchestrator, defined in Task 1.
@@ -219,9 +212,9 @@ Before editing, write these checks. Verify each after editing:
 [ ] No remaining references to relative path `.loop-logs/error/<task-id>.md` in agent steps
 ```
 
-- [ ] **Step 2: Update Agent Step B to reference injected paths (lines 171–179)**
+- [ ] **Step 2: Update Agent Step B to reference injected paths**
 
-Find this block (lines 171–179):
+Find and replace the following block:
 ```
 #### Agent Step B — Create worktree
 
@@ -253,9 +246,9 @@ Use these paths for all log writes in Step D. Never use relative paths for log f
 Update task JSON: `"status": "in_progress"`, `"worktree": ".worktrees/<task-id>"`.
 ```
 
-- [ ] **Step 3: Update Agent Step D — "Before each attempt" append (line 187)**
+- [ ] **Step 3: Update Agent Step D — "Before each attempt" append**
 
-Find (line 187):
+Find and replace the following block:
 ```
 **Before each attempt**, append to `.loop-logs/logs/<task-id>.md`:
 ```
@@ -265,9 +258,9 @@ Replace with:
 **Before each attempt**, append to `LOG_PATH`:
 ```
 
-- [ ] **Step 4: Update Agent Step D — "On pass" append (line 203)**
+- [ ] **Step 4: Update Agent Step D — "On pass" append**
 
-Find (line 203):
+Find and replace the following block:
 ```
 Append to log:
 ```
@@ -277,9 +270,9 @@ Replace with:
 Append to `LOG_PATH`:
 ```
 
-- [ ] **Step 5: Update Agent Step D — "On fail" append (line 224)**
+- [ ] **Step 5: Update Agent Step D — "On fail" append**
 
-Find (line 224):
+Find and replace the following block:
 ```
 Append full output to log (lint under `### Lint output`, tests under `### Test output`). Append `### Outcome: failed — <one-line root cause>`. Increment `attempt` in task JSON.
 ```
@@ -289,9 +282,9 @@ Replace with:
 Append full output to `LOG_PATH` (lint under `### Lint output`, tests under `### Test output`). Append `### Outcome: failed — <one-line root cause>`. Increment `attempt` in task JSON.
 ```
 
-- [ ] **Step 6: Update Agent Step D — Hard Stop log appends (lines 231–233)**
+- [ ] **Step 6: Update Agent Step D — Hard Stop log appends**
 
-Find (lines 231–233):
+Find and replace the following block:
 ```
 Append `### Outcome: HARD STOP after 3 attempts` to log.
 
@@ -313,5 +306,9 @@ Read the full "Per-Task Agent Instructions" section. Tick off each item. Search 
 
 ```bash
 git add skills/autonomous-feature-development/stage-impl.md
-git commit -m "feat(skill): agents use injected LOG_PATH/ERROR_LOG_PATH in both modes"
+git commit -m "feat(skill): agents write logs directly; orchestrator injects absolute LOG_PATH"
 ```
+
+- [ ] **Step 9: Smoke-test**
+
+Open a new session and invoke the skill on a single-task stub plan. Confirm that `.loop-logs/logs/<task-id>.md` is created by the agent (not by the orchestrator). If a full skill run is not feasible in the current environment, explicitly note this as an open validation gap before closing the branch.
