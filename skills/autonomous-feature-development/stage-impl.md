@@ -63,23 +63,26 @@ Working branch: <current-branch>
 
 ## Orchestrator: Agent Output Schema and File Ownership
 
-**The orchestrator owns all `.loop-logs/` file writes. Agents own implementation and
-return content. This separation is the key to reliable bookkeeping.**
+File writes are split by owner:
+
+| File | Owner | When written |
+|------|-------|--------------|
+| `.loop-logs/tasks/<task-id>.json` | Orchestrator | Before spawn (`in_progress`), after agent returns (`completed`/`failed`) |
+| `.loop-logs/logs/<task-id>.md` | Agent (written directly, both Workflow and non-Workflow mode) | Incrementally — appended after each TDD attempt |
+| `.loop-logs/error/<task-id>.md` | Agent (written directly, both Workflow and non-Workflow mode) | On hard stop (3 failures exhausted) |
+| `.loop-logs/logs/summary.md` | Orchestrator (Stage 4 only) | Stage 4 only |
+| `.loop-logs/tasks/verification-state.json` | Orchestrator | After each verification round (Stage 2) |
 
 ### Task state lifecycle (orchestrator responsibility)
 
-Before calling each per-task agent, the orchestrator writes:
+Before calling each per-task agent, the orchestrator:
 
-```json
-{ "status": "in_progress", "worktree": ".worktrees/<task-id>" }
-```
+1. Writes `{ "status": "in_progress", "worktree": ".worktrees/<task-id>" }` into `.loop-logs/tasks/<task-id>.json` (merging with the existing fields from Stage 0).
+2. Computes the absolute repo root path (e.g. via `git rev-parse --show-toplevel`) and injects two paths into the agent's prompt:
+   - `LOG_PATH`: `<absolute-repo-root>/.loop-logs/logs/<task-id>.md`
+   - `ERROR_LOG_PATH`: `<absolute-repo-root>/.loop-logs/error/<task-id>.md`
 
-into `.loop-logs/tasks/<task-id>.json` (merging with the existing fields from Stage 0).
-
-After the agent returns, the orchestrator writes the final state from the agent's
-structured output (see schema below).
-
-When using the Workflow tool: The agent MUST NOT write to `.loop-logs/tasks/<task-id>.json` or `.loop-logs/logs/<task-id>.md`. The orchestrator performs those writes using the agent's structured output. In non-Workflow mode, see the fallback note below — agents write files directly via Steps B and D.
+After the agent returns, the orchestrator writes the final task state from the agent's structured output (see schema below).
 
 ### Required agent response schema
 
@@ -89,48 +92,11 @@ When implementing Stage 1 via the Workflow tool, use the `schema` option on each
 ```json
 {
   "status": "completed" | "failed",
-  "attempt_count": 2,
-  "attempt_logs": [
-    {
-      "attempt": 1,
-      "plan": "3-5 bullet points describing the approach",
-      "lint_output": "full lint stdout/stderr, or PASS",
-      "test_output": "full test stdout/stderr, or PASS",
-      "outcome": "success | failed — <one-line root cause> | HARD STOP after 3 attempts"
-    }
-  ]
+  "attempt_count": 2
 }
 ```
 
-`attempt_logs` has one entry per TDD attempt. `attempt_count` ranges 1–3 (1 on first-pass success, 3 on hard stop). On hard stop (3 failures), `attempt_logs`
-has 3 entries and `status` is `"failed"`.
-
-### Orchestrator writes log file from schema output
-
-After each agent returns, the orchestrator writes `.loop-logs/logs/<task-id>.md` by
-formatting the `attempt_logs` array:
-
-```markdown
-# <task-id>
-
-## Attempt <N> — <timestamp>
-
-### Implementation plan
-
-<plan from attempt_logs[N].plan>
-
-### Lint output
-
-<lint_output>
-
-### Test output
-
-<test_output>
-
-### Outcome: <outcome>
-```
-
-Repeat one `## Attempt N` block per entry in `attempt_logs`.
+`attempt_count` ranges 1–3 (1 on first-pass success, 3 on hard stop). Rich attempt detail (implementation plan, lint output, test output, outcomes) is written directly to `LOG_PATH` by the agent — it does not travel through the schema.
 
 ### Orchestrator writes task JSON from schema output
 
@@ -148,10 +114,9 @@ If `status` is `"failed"`, omit `"tdd-loop-complete"` from `completed_steps`.
 
 ---
 
-> **If not using the Workflow tool:** The agent prompt MUST include steps A–D from the
-> "Per-Task Agent Instructions" section below verbatim. The plan's implementation content
-> is additional context, not a replacement for those steps. In this mode the agent writes
-> the files directly as specified in steps B and D.
+**Both Workflow and non-Workflow mode:** The agent prompt MUST include steps A–D from
+the "Per-Task Agent Instructions" section below. Agents write `LOG_PATH` and
+`ERROR_LOG_PATH` directly in both modes — the orchestrator never writes those files.
 
 
 ---
@@ -176,6 +141,12 @@ git worktree add .worktrees/<task-id> -b worktree/<task-id>
 
 Switch working directory to `.worktrees/<task-id>` for ALL remaining steps. All bash commands, file reads, and git operations MUST run from within `.worktrees/<task-id>`.
 
+The orchestrator injects two absolute paths into this agent's prompt before spawning:
+- `LOG_PATH` — absolute path to `.loop-logs/logs/<task-id>.md` in the main repo root
+- `ERROR_LOG_PATH` — absolute path to `.loop-logs/error/<task-id>.md` in the main repo root
+
+Use these paths for all log writes in Step D. Never use relative paths for log files — the working directory is the worktree, not the repo root.
+
 Update task JSON: `"status": "in_progress"`, `"worktree": ".worktrees/<task-id>"`.
 
 #### Agent Step C — Read task content
@@ -184,7 +155,7 @@ From `plan_path`, read the full section for this task (from `### Task N: <name>`
 
 #### Agent Step D — TDD loop (max 3 attempts)
 
-**Before each attempt**, append to `.loop-logs/logs/<task-id>.md`:
+**Before each attempt**, append to `LOG_PATH`:
 ```markdown
 ## Attempt <N> — <ISO timestamp>
 ### Implementation plan
@@ -200,7 +171,7 @@ From `plan_path`, read the full section for this task (from `### Task N: <name>`
 
 **On pass (both green):**
 
-Append to log:
+Append to `LOG_PATH`:
 ```markdown
 ### Lint output
 PASS
@@ -221,16 +192,16 @@ Stop loop.
 
 **On fail:**
 
-Append full output to log (lint under `### Lint output`, tests under `### Test output`). Append `### Outcome: failed — <one-line root cause>`. Increment `attempt` in task JSON.
+Append full output to `LOG_PATH` (lint under `### Lint output`, tests under `### Test output`). Append `### Outcome: failed — <one-line root cause>`. Increment `attempt` in task JSON.
 
 - If `attempt < 3`: return to start of TDD loop (new attempt)
 - If `attempt == 3`: proceed to Hard Stop
 
 **Hard Stop (3 attempts exhausted):**
 
-Append `### Outcome: HARD STOP after 3 attempts` to log.
+Append `### Outcome: HARD STOP after 3 attempts` to `LOG_PATH`.
 
-Write `.loop-logs/error/<task-id>.md`:
+Write `ERROR_LOG_PATH`:
 ```markdown
 # Failed: <task-id>
 
@@ -317,8 +288,7 @@ Missing or stale bookkeeping detected:
 ```
 
 Do NOT proceed to Stage 2. Investigate which agent or orchestrator step was skipped.
-If using schema-enforced output, verify the orchestrator wrote the files after agent() returned.
-If agents wrote files directly, check the agent prompt included steps A–D verbatim.
+Verify the agent prompt included steps A–D verbatim. Under this design, agents always write log files directly — the orchestrator never writes them.
 
 **If all checks pass:** Print `Integrity gate passed — advancing to Stage 2.` and proceed.
 
