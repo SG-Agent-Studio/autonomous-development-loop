@@ -65,12 +65,13 @@ Working branch: <current-branch>
 
 File writes are split by owner:
 
-| File | Owner |
-|------|-------|
-| `.loop-logs/tasks/<task-id>.json` | Orchestrator |
-| `.loop-logs/logs/<task-id>.md` | Agent (written directly, both Workflow and non-Workflow mode) |
-| `.loop-logs/error/<task-id>.md` | Agent (written directly, both Workflow and non-Workflow mode) |
-| `.loop-logs/logs/summary.md` | Orchestrator (Stage 4 only) |
+| File | Owner | When written |
+|------|-------|--------------|
+| `.loop-logs/tasks/<task-id>.json` | Orchestrator | Before spawn (`in_progress`), after agent returns (`completed`/`failed`) |
+| `.loop-logs/logs/<task-id>.md` | Agent (written directly, both Workflow and non-Workflow mode) | Incrementally — appended after each TDD attempt |
+| `.loop-logs/error/<task-id>.md` | Agent (written directly, both Workflow and non-Workflow mode) | On hard stop (3 failures exhausted) |
+| `.loop-logs/logs/summary.md` | Orchestrator (Stage 4 only) | Stage 4 only |
+| `.loop-logs/tasks/verification-state.json` | Orchestrator | After each verification round (Stage 2) |
 
 ### Task state lifecycle (orchestrator responsibility)
 
@@ -287,8 +288,7 @@ Missing or stale bookkeeping detected:
 ```
 
 Do NOT proceed to Stage 2. Investigate which agent or orchestrator step was skipped.
-If using schema-enforced output, verify the orchestrator wrote the files after agent() returned.
-If agents wrote files directly, check the agent prompt included steps A–D verbatim.
+Verify the agent prompt included steps A–D verbatim. Under this design, agents always write log files directly — the orchestrator never writes them.
 
 **If all checks pass:** Print `Integrity gate passed — advancing to Stage 2.` and proceed.
 
