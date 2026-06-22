@@ -78,6 +78,20 @@ The autonomous pipeline is **fully autonomous** by design — it does not pause 
 input mid-run. Read `skills/autonomous-feature-development/SKILL.md` for the stage
 breakdown and hard rules before first use.
 
+## Development
+
+### Bumping the version
+
+```
+pnpm bump          # patch bump (default): 0.1.1 → 0.1.2
+pnpm bump minor    # 0.1.1 → 0.2.0
+pnpm bump major    # 0.1.1 → 1.0.0
+pnpm bump 1.2.3    # set explicit version
+```
+
+Updates `version` in both `plugin.json` files and `metadata.version` in both
+`marketplace.json` files.
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).
