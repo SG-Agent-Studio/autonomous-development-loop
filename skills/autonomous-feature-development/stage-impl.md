@@ -149,18 +149,21 @@ Use these paths for all log writes in Step D. Never use relative paths for log f
 
 Update task JSON: `"status": "in_progress"`, `"worktree": ".worktrees/<task-id>"`.
 
-#### Agent Step C — Read task content
+#### Agent Step C — Read task content and write Task Header
 
 From `plan_path`, read the full section for this task (from `### Task N: <name>` to next `### Task` heading or end of file). Also read full `spec_path` for architectural context.
 
+Read both log reference documents:
+- `skills/autonomous-feature-development/log-schema.md`
+- `skills/autonomous-feature-development/log-sample.md`
+
+Write the **Task Header** (Tier 1 from `log-schema.md`) to `LOG_PATH` now, before any attempt begins:
+- Copy the full plan section verbatim
+- Extract and list ACs (omit `### Acceptance Criteria` section if none are listed)
+
 #### Agent Step D — TDD loop (max 3 attempts)
 
-**Before each attempt**, append to `LOG_PATH`:
-```markdown
-## Attempt <N> — <ISO timestamp>
-### Implementation plan
-<3-5 bullet points describing your approach>
-```
+**Per-attempt logging:** Follow `log-schema.md` Tier 2 for the Per-Attempt Block. Append it to `LOG_PATH` after each attempt completes.
 
 **Implement:**
 1. Write the failing test first. Run it and confirm it fails with the expected reason.
@@ -170,15 +173,6 @@ From `plan_path`, read the full section for this task (from `### Task N: <name>`
    - `just test-unit` — must exit 0
 
 **On pass (both green):**
-
-Append to `LOG_PATH`:
-```markdown
-### Lint output
-PASS
-### Test output
-PASS
-### Outcome: success
-```
 
 Update task JSON: `"status": "completed"`, `"attempt": <N>`, append `"tdd-loop-complete"` to `completed_steps`.
 
@@ -192,7 +186,7 @@ Stop loop.
 
 **On fail:**
 
-Append full output to `LOG_PATH` (lint under `### Lint output`, tests under `### Test output`). Append `### Outcome: failed — <one-line root cause>`. Increment `attempt` in task JSON.
+Increment `attempt` in task JSON.
 
 - If `attempt < 3`: return to start of TDD loop (new attempt)
 - If `attempt == 3`: proceed to Hard Stop
