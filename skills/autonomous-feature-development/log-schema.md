@@ -78,6 +78,6 @@ PASS (N passed, N new)
 
 **`### Files Changed`:** Prefix each line with `created` or `modified`. Include a one-line role annotation. List every file touched in this attempt, including test files.
 
-**`### New Tests`:** List only tests written in this task. Do not list pre-existing tests. Use exact function names (e.g. `test_extract_user_facts`). If no new tests were written, write `(none)`.
+**`### New Tests`:** List only tests written in this task. Do not list pre-existing tests. Use exact function names (e.g. `test_extract_user_facts`). If no new tests were written, write `(none)` or `(none — <brief reason>)`.
 
 **`### Key Decisions`:** Only non-obvious choices with rationale — the "why" a reviewer would otherwise need to ask. Omit this section entirely if all decisions were mechanical.
