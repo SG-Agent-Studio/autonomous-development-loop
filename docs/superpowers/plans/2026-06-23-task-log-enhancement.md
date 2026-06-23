@@ -253,7 +253,7 @@ grep -c "## Task Context" skills/autonomous-feature-development/log-sample.md
 grep -c "### Key Decisions" skills/autonomous-feature-development/log-sample.md
 ```
 
-Expected: each outputs `1`.
+Expected: `Outcome: failed` → `1`, `Outcome: success` → `1`, `## Task Context` → `1`, `### Key Decisions` → `2` (one per attempt block).
 
 - [ ] **Step 3: Commit**
 
@@ -307,7 +307,7 @@ grep -c "log-sample.md" skills/autonomous-feature-development/stage-impl.md
 grep -c "Task Header" skills/autonomous-feature-development/stage-impl.md
 ```
 
-Expected: each outputs `1`.
+Expected: `log-schema.md` → `3` (Step C bullet, Step C write-instruction, Step D reference), `log-sample.md` → `1`, `Task Header` → `1`.
 
 - [ ] **Step 3: Replace Step D log format block with schema reference**
 
@@ -341,17 +341,13 @@ And find the "On fail" instruction:
 Append full output to `LOG_PATH` (lint under `### Lint output`, tests under `### Test output`). Append `### Outcome: failed — <one-line root cause>`.
 ```
 
-Replace all three blocks with a single unified instruction:
+Replace Block 1 in-place with this unified instruction (delete Blocks 2 and 3 entirely):
 
 ```markdown
-**Per-attempt logging:** Follow `log-schema.md` Tier 2 for the Per-Attempt Block. Append it to `LOG_PATH` after each attempt completes. Concretely:
-
-- Before the attempt: append `## Attempt <N> — <ISO timestamp>` and `### Implementation Plan` bullets
-- After the attempt: append `### Files Changed`, `### New Tests`, `### Key Decisions` (omit if all decisions were mechanical), `### Lint Output`, `### Test Output`, `### Commit`, `### Outcome`
-- On pass: `PASS` for lint/test, 7-char commit hash, `Outcome: success`
-- On fail (not hard stop): full raw lint/test output, `n/a — retrying` for commit, `Outcome: failed — <root cause>`
-- On hard stop (attempt 3 fail): full raw output, `wip — \`<hash>\`` for commit, `Outcome: HARD STOP after 3 attempts`
+**Per-attempt logging:** Follow `log-schema.md` Tier 2 for the Per-Attempt Block. Append it to `LOG_PATH` after each attempt completes.
 ```
+
+After the edit, Step D's structure is: `**Per-attempt logging:**` block first, then the unchanged `**Implement:**` TDD procedure section, then the unchanged `**On pass (both green):**` and `**On fail:**` structural labels — only their log-append sub-blocks are removed. The `**Implement:**` section and TDD procedure are untouched.
 
 - [ ] **Step 4: Verify old inline format is gone and new reference is present**
 

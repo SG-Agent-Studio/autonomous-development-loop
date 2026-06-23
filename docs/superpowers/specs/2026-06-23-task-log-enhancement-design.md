@@ -153,4 +153,7 @@ The sample should demonstrate a failed-then-recovered scenario so agents underst
 - AC-3: `stage-impl.md` Step C instructs agents to read schema + sample and write Task Header before attempt 1
 - AC-4: `stage-impl.md` Step D references `log-schema.md` instead of inline format; old template removed
 - AC-5: `stage-final.md` updated to include `Delivered` column in summary.md output
-- AC-6: A new sample log produced under this format is human-readable and sufficient for post-mortem without opening the plan or spec
+- AC-6: `log-sample.md` includes verbatim plan section text, at least two `### Files Changed` entries with role annotations, and at least two `### Key Decisions` entries with rationale prose
+- AC-7: `log-schema.md` Section Rules table covers commit-hash behavior for pass, non-hard-stop fail (`n/a — retrying`), and hard-stop fail (`wip — <hash>`)
+
+**Design Goal (non-testable):** A task log produced under this format is sufficient for post-mortem and code review prep without opening the plan or spec.
