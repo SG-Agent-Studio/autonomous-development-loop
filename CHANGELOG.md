@@ -7,6 +7,11 @@ All notable changes to this plugin are documented here. This project follows
 
 ### Added
 - Architecture documentation for agent workflow (`docs/architecture/001-agent-workflow.md`) and skills (`docs/architecture/002-skills.md`), linked from the README.
+- Enhanced Stage 1 task logs for post-mortem and code review prep — agents now write a structured Task Header (verbatim plan section + AC list) before attempt 1, and a richer Per-Attempt Block (files changed with role annotations, new test names, key design decisions, commit hash) after each TDD attempt.
+- `log-schema.md` — single source of truth for task log format, referenced by Stage 1 agents at runtime.
+- `log-sample.md` — two-attempt reference example (fail then pass) for agents to pattern-match.
+- `Delivered` column in `summary.md` showing what each task produced, derived from the plan heading.
+- Architecture decision record for workflow log file design (`docs/architecture/003-workflow-log-file.md`).
 
 ## [0.1.2] - 2026-06-22
 
