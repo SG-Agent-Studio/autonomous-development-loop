@@ -3,6 +3,7 @@
 # Local files
 *.local.*
 .superpowers
+temp
 
 # NodeJS
 node_modules
