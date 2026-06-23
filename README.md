@@ -78,6 +78,11 @@ The autonomous pipeline is **fully autonomous** by design — it does not pause 
 input mid-run. Read `skills/autonomous-feature-development/SKILL.md` for the stage
 breakdown and hard rules before first use.
 
+## Architecture
+
+- [Agent Workflow](./docs/architecture/001-agent-workflow.md) — stage-by-stage flowcharts for Mode A (full pipeline) and Mode B (standalone review fix)
+- [Skills Reference](./docs/architecture/002-skills.md) — skill overview, dependency graph, file structure per skill
+
 ## Development
 
 ### Bumping the version
