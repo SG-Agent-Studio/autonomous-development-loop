@@ -61,6 +61,7 @@ PASS (N passed, N new)
 `<7-char hash>`
 
 ### Outcome: success
+(On failure: see Section Rules below for Outcome and Commit values)
 ~~~
 
 ---
@@ -71,7 +72,7 @@ PASS (N passed, N new)
 |---------|------|------|
 | `### Lint Output` | `PASS` | Full raw output — do not truncate |
 | `### Test Output` | `PASS (N passed, N new)` | Full raw output — do not truncate |
-| `### Commit` | `\`<7-char hash>\`` | `n/a — retrying` (attempts 1–2); `wip — \`<hash>\`` (hard stop) |
+| `### Commit` | `\`<7-char hash>\`` | `n/a — retrying` (attempts 1–2); `n/a — hard stop` (attempt 3) |
 | `### Outcome` | `Outcome: success` | `Outcome: failed — <one-line root cause>` |
 
 **`### Implementation Plan`:** 3–5 bullets. Describe your plan for this specific attempt (not a repeat of prior attempts).

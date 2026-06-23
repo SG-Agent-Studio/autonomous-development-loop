@@ -193,8 +193,6 @@ Increment `attempt` in task JSON.
 
 **Hard Stop (3 attempts exhausted):**
 
-Append `### Outcome: HARD STOP after 3 attempts` to `LOG_PATH`.
-
 Write `ERROR_LOG_PATH`:
 ```markdown
 # Failed: <task-id>
