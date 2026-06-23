@@ -23,9 +23,9 @@ Write `.loop-logs/logs/summary.md`:
 
 ## Tasks
 
-| Task | Status | Attempts |
-|------|--------|----------|
-| <task-id> | completed / failed | N |
+| Task | Status | Attempts | Delivered |
+|------|--------|----------|-----------|
+| <task-id> | completed / failed | N | <name from `### Task N: <name>` heading in plan> |
 
 **Completed:** N/total
 **Failed:** N/total (see .loop-logs/error/ for details)
