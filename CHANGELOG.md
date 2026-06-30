@@ -3,6 +3,23 @@
 All notable changes to this plugin are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-06-30
+
+### Added
+
+- `cleanup-loop-logs` skill — human-triggered cleanup of a single autonomous-development run; deletes that run's `.loop-logs/<id>/` logs and prunes the orphaned worktrees/branches it left behind. `disable-model-invocation` guarantees the orchestrator can never call it.
+- Run-id log namespacing — every run computes an `id` once in Stage 0 and writes all logs under `.loop-logs/<id>/` (Mode B `id` = `<today>-review-<branch>`), so concurrent or repeated runs no longer collide.
+- Code-review logging — each review iteration writes a `code-review/round-<N>.md` log capturing the issues raised that round.
+
+### Changed
+
+- Unified verify↔review loop — former Stages 2 (verify) and 3 (review-fix) are now a single capped loop (≤5 iterations) in `stage-review-fix.md`: each iteration verifies against spec acceptance criteria, spawns fresh reviewers + consolidator, fixes actionable (blocking + important) issues, and re-verifies. Exits when a review raises zero actionable issues.
+- Orchestrator purity (Hard Rule 6) — the orchestrator never reads, writes, or executes product code, quality checks (lint/test/verify), or reviews; every such action is delegated to a single-responsibility subagent, and the agent that implements a fix never reviews it. The orchestrator only does git plumbing and writes the run's log/state files.
+- `stage-verify` now delegates verification and fixes to subagents instead of running them inline.
+- `stage-final` reports the number of loop iterations and any deferred minor issues in `summary.md`.
+- Mode B (standalone review-fix) now enters the same capped verify↔review loop after validating the received issues.
+- Architecture docs (`001-agent-workflow.md`, `002-skills.md`) synced with the stage 2/3 refactor.
+
 ## [0.1.3] - 2026-06-23
 
 ### Added
