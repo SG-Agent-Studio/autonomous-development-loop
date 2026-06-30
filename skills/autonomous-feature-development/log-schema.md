@@ -1,6 +1,6 @@
 # Task Log Schema
 
-This document defines the format for task log files written to `.loop-logs/logs/<task-id>.md` during Stage 1. Read it at **Agent Step C** (after reading plan/spec, before attempt 1). Also read `log-sample.md` for a concrete example.
+This document defines the format for task log files written to `.loop-logs/<id>/logs/<task-id>.md` during Stage 1. Read it at **Agent Step C** (after reading plan/spec, before attempt 1). Also read `log-sample.md` for a concrete example.
 
 ---
 

@@ -1,6 +1,6 @@
 # Sample Task Log
 
-This is a reference example for agents writing `.loop-logs/logs/<task-id>.md` files. It shows a two-attempt scenario: one failed attempt followed by one successful attempt.
+This is a reference example for agents writing `.loop-logs/<id>/logs/<task-id>.md` files. It shows a two-attempt scenario: one failed attempt followed by one successful attempt.
 
 ---
 
@@ -11,7 +11,7 @@ This is a reference example for agents writing `.loop-logs/logs/<task-id>.md` fi
 ### Plan Section
 ### Task 3: Task Status Validator
 
-Implement a `validate_task_status` function that reads a `.loop-logs/tasks/<task-id>.json`
+Implement a `validate_task_status` function that reads a `.loop-logs/<id>/tasks/<task-id>.json`
 file and verifies it has the required fields and a valid status value.
 
 **Files to create:**
