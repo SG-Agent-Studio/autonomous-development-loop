@@ -6,6 +6,15 @@
 
 ---
 
+> **Update (2026-06-30, commit `237cfab`):** the stage 2/3 refactor namespaced every log
+> under a per-run `id`. The flat paths below (`.loop-logs/logs/<task-id>.md`,
+> `.loop-logs/tasks/...`) are now `.loop-logs/<id>/logs/<task-id>.md`,
+> `.loop-logs/<id>/tasks/...`, etc. The log **format** decisions in this record are
+> unchanged — only the directory layout moved. See `001-agent-workflow.md` (File
+> Ownership) for the current paths.
+
+---
+
 ## Context
 
 Stage 1 task logs (`.loop-logs/logs/<task-id>.md`) were too sparse to be useful. A typical log contained:
