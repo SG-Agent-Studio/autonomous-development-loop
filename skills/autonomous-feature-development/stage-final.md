@@ -23,17 +23,19 @@ Write `.loop-logs/<id>/logs/summary.md`:
 
 ## Tasks
 
-| Task | Status | Attempts | Delivered |
-|------|--------|----------|-----------|
-| <task-id> | completed / failed | N | <name from `### Task N: <name>` heading in plan> |
+| Task      | Status             | Attempts | Delivered                                        |
+| --------- | ------------------ | -------- | ------------------------------------------------ |
+| <task-id> | completed / failed | N        | <name from `### Task N: <name>` heading in plan> |
 
 **Completed:** N/total
 **Failed:** N/total (see .loop-logs/<id>/error/ for details)
 
 ## Verification
+
 **Rounds:** <rounds_completed from .loop-logs/<id>/tasks/verification-state.json>
 
 ## Review
+
 **Loop iterations:** <N> of ≤5 (<N> = count of `.loop-logs/<id>/code-review/round-<N>.md` files)
 **Actionable issues found:** N
 **Actionable issues fixed:** N
@@ -46,11 +48,13 @@ Write `.loop-logs/<id>/logs/summary.md`:
 Stage everything: `git add -A`
 
 **If all tasks completed successfully:**
+
 ```bash
 git commit -m "feat(<scope>): <description derived from plan Goal line>"
 ```
 
 **If any tasks failed (partial):**
+
 ```bash
 git commit -m "wip: partial — <completed>/<total> tasks completed
 

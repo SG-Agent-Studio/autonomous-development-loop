@@ -5,6 +5,7 @@ REVIEW until a review round raises **zero actionable issues**, or a hard cap of 
 iterations is hit.
 
 Used in two contexts:
+
 - **Mode A**: After Stage 1, the orchestrator runs the Loop Control below.
 - **Mode B Standalone**: Issues already exist from a received code review — the
   orchestrator first validates and fixes them (Part 0), then enters the same loop.
@@ -43,6 +44,7 @@ summary as deferred ("not handled yet").
 
 Compute `id = <today>-review-<current-branch>`. Issues exist in conversation context
 from a received code review. The orchestrator spawns a **validation agent** which:
+
 1. For each issue, reads the actual code to confirm the problem exists as described.
 2. Marks each `valid` (real, reproducible in current code) or `invalid` (stale,
    incorrect, or subjective).
@@ -64,13 +66,14 @@ work, with no spec-acceptance match.
 The orchestrator spawns 3 reviewer subagents **in parallel** (Sonnet[1m] each). Each
 reviews independently and returns raw findings:
 
-| Agent | Skill |
-|-------|-------|
-| Reviewer A | `enhanced-review` |
+| Agent      | Skill                                                                |
+| ---------- | -------------------------------------------------------------------- |
+| Reviewer A | `enhanced-review`                                                    |
 | Reviewer B | `ponytail:ponytail-review` (skip if `ponytail` plugin not installed) |
-| Reviewer C | `simplify` |
+| Reviewer C | `simplify`                                                           |
 
 The orchestrator passes all raw findings to a **consolidation agent**, which:
+
 1. Verifies each issue is real and evidence-backed (not hypothetical).
 2. Deduplicates overlapping findings.
 3. Returns a validated issue list, each tagged severity blocking / important / minor.
@@ -82,11 +85,14 @@ The orchestrator (NOT the consolidator) writes
 
 ```markdown
 # Code Review — Round <iteration>
+
 **Timestamp:** <ISO>
 **Loop iteration:** <iteration> of ≤5
 
 ## Raw findings
+
 ### Reviewer A — enhanced-review
+
 <raw>
 ### Reviewer B — ponytail
 <raw, or: skipped — plugin not installed>
@@ -94,11 +100,13 @@ The orchestrator (NOT the consolidator) writes
 <raw>
 
 ## Consolidated issues
-| ID | Severity | Summary | Evidence (file:line) |
-|----|----------|---------|----------------------|
-| ... | blocking/important/minor | ... | ... |
+
+| ID  | Severity                 | Summary | Evidence (file:line) |
+| --- | ------------------------ | ------- | -------------------- |
+| ... | blocking/important/minor | ...     | ...                  |
 
 ## Disposition
+
 - Actionable (blocking + important) — to fix this iteration: <ids, or "none">
 - Deferred (minor — NOT handled yet): <ids + summaries, or "none">
 ```
@@ -157,15 +165,18 @@ If iteration reaches 5 with actionable issues still open, the orchestrator write
 **Spec:** <spec_path, or "n/a — Mode B">
 
 ## Outstanding actionable issues
+
 <consolidated blocking + important from the final round>
 
 ## Per-iteration history
+
 | Iteration | Actionable found | Fixed | Deferred minors |
-|-----------|------------------|-------|-----------------|
-| 1 | ... | ... | ... |
+| --------- | ---------------- | ----- | --------------- |
+| 1         | ...              | ...   | ...             |
 ```
 
 Then commit and proceed:
+
 ```bash
 git add -A
 git commit -m "wip: review loop exhausted after 5 iterations — see .loop-logs/<id>/error/review-loop-exhausted.md"
@@ -179,6 +190,7 @@ git commit -m "wip: review loop exhausted after 5 iterations — see .loop-logs/
 
 **Mode B:** Run `superpowers:finishing-a-development-branch` (requires the `superpowers`
 plugin — if absent, stop and tell the user to install it). Before that, print:
+
 ```
 Fixed <N> actionable issues across <iterations> iteration(s).
 Deferred <N> minor issues (see .loop-logs/<id>/code-review/).

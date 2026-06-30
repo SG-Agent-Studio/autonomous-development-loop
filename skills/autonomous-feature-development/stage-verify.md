@@ -6,6 +6,7 @@ their structured output.
 ## Verify (verifier subagent)
 
 Spawn a **verifier subagent** (single responsibility). It:
+
 1. Runs the `verifying-implementation` skill — boots the system and exercises the
    changed endpoints/paths.
 2. Matches observed output against the acceptance criteria in `spec_path`. **Mode B
@@ -20,6 +21,7 @@ Spawn a **verifier subagent** (single responsibility). It:
 
 After each verify (pass or fail), the orchestrator writes
 `.loop-logs/<id>/tasks/verification-state.json`:
+
 ```json
 { "rounds_completed": <N>, "last_outcome": "pass" | "fail", "notes": "<optional context>" }
 ```
@@ -46,22 +48,27 @@ After each verify (pass or fail), the orchestrator writes
    `verification-state.json` after each round.
 
 **If still failing after 3 rounds**, write `.loop-logs/<id>/error/verification-failure.md`:
+
 ```markdown
 # Verification Failed After 3 Rounds
 
 **Spec:** <spec_path, or "n/a — Mode B (regression-only verify)">
 
 ## Round 1
+
 <full verifier output>
 
 ## Round 2
+
 <full verifier output>
 
 ## Round 3
+
 <full verifier output>
 ```
 
 Commit and STOP the whole pipeline:
+
 ```bash
 git add -A
 git commit -m "wip: verification failed after 3 rounds — see .loop-logs/<id>/error/verification-failure.md"

@@ -38,11 +38,11 @@ digraph mode {
 
 Read and execute each stage file in order:
 
-| Stage | File | Description |
-|-------|------|-------------|
-| 0 + 1 | `./stage-impl.md` | Guard/setup, compute run `id`, parallel worktree implementation |
+| Stage | File                    | Description                                                                                                                                                                                                                                                                                        |
+| ----- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 + 1 | `./stage-impl.md`       | Guard/setup, compute run `id`, parallel worktree implementation                                                                                                                                                                                                                                    |
 | 2 + 3 | `./stage-review-fix.md` | **Capped verify↔review loop** (≤5 iterations): each iteration runs the VERIFY step in `./stage-verify.md`, then spawns fresh reviewers + consolidator, writes a code-review log, fixes actionable (blocking+important) issues, and re-verifies. Exits when a review raises zero actionable issues. |
-| 4 | `./stage-final.md` | Lint, format, summary, final commit |
+| 4     | `./stage-final.md`      | Lint, format, summary, final commit                                                                                                                                                                                                                                                                |
 
 **Run `id`:** computed once in Stage 0 (`stage-impl.md` Step 0.2); all logs live under
 `.loop-logs/<id>/`. Mode B `id` = `<today>-review-<branch>`.
