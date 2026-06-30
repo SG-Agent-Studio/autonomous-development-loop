@@ -89,7 +89,7 @@ checks; it only coordinates and records.**
 | Spawn subagents, read structured output + logs | Run tests / lint / verify |
 | Git plumbing: squash-merge, worktree add/remove, branch delete, commits | Code review / consolidation / validation |
 | Routing & loop-control decisions | Plan & implement fixes |
-| Write `summary.md` + `code-review/round-<N>.md` | Boot/exercise the system (verify) |
+| Write the run's log/state files (e.g. `summary.md`, `code-review/round-<N>.md`, task JSON, `verification-state.json`, `error/*.md`) | Boot/exercise the system (verify) |
 
 **Stage 2 change:** today the main agent runs `verifying-implementation` directly. It
 must instead spawn a **verifier subagent** that runs the skill and returns a structured

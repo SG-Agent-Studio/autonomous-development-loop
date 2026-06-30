@@ -65,7 +65,9 @@ stays accurate even when the cap pre-empts the fix step.
 and `error/*.md` — a reader could take the two-item list as the complete set.
 
 **Fix applied:** rule 6 now says "write the run's log/state files (e.g. `summary.md`,
-`code-review/round-<N>.md`, task JSON, `verification-state.json`, `error/*.md`)".
+`code-review/round-<N>.md`, task JSON, `verification-state.json`, `error/*.md`)". The
+same broadening was applied to the spec §3 orchestrator-MAY table cell so the design
+matches the skill.
 
 ### 4. (Minor) Per-issue Phase 5 ("Verify") had no agent label
 
