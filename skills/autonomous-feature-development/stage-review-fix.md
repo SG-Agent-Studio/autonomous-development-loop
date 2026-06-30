@@ -51,6 +51,10 @@ from a received code review. The orchestrator spawns a **validation agent** whic
 Do NOT fix invalid issues. Fix each valid issue using the Per-Issue Fix Pipeline
 (Part 2) and squash-merge. Then **enter Loop Control above** (starting at VERIFY).
 
+Mode B has no `spec_path` in context, so the inherited VERIFY step runs in
+regression-only mode (see `./stage-verify.md`): it confirms the changed paths still
+work, with no spec-acceptance match.
+
 ---
 
 ## Part 1: Review (one iteration)
@@ -95,7 +99,7 @@ The orchestrator (NOT the consolidator) writes
 | ... | blocking/important/minor | ... | ... |
 
 ## Disposition
-- Actionable (blocking + important) — fixed this iteration: <ids, or "none">
+- Actionable (blocking + important) — to fix this iteration: <ids, or "none">
 - Deferred (minor — NOT handled yet): <ids + summaries, or "none">
 ```
 
@@ -125,7 +129,8 @@ fix is never the agent that reviews it:
   `just test-unit` both exit 0. Commit `fix(<scope>): <issue description>`.
 - **Phase 4 — Review implementation** (enhanced-review agent): review the code change;
   if issues → back to Phase 3; repeat until approved.
-- **Phase 5 — Verify**: `just lint` + `just test-unit` one final time; mark resolved.
+- **Phase 5 — Verify** (Implementer agent): `just lint` + `just test-unit` one final
+  time; mark resolved. The orchestrator never runs lint/test itself.
 
 ### Squash-merge each fix (orchestrator)
 
@@ -149,7 +154,7 @@ If iteration reaches 5 with actionable issues still open, the orchestrator write
 ```markdown
 # Review Loop Exhausted After 5 Iterations
 
-**Spec:** <spec_path>
+**Spec:** <spec_path, or "n/a — Mode B">
 
 ## Outstanding actionable issues
 <consolidated blocking + important from the final round>

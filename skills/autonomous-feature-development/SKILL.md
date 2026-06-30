@@ -60,4 +60,4 @@ Issues already exist in conversation context. Read `./stage-review-fix.md`: the 
 3. Always commit at the end, even partial (`wip:` prefix if any task failed).
 4. All verifiable signals must be green before advancing to the next stage.
 5. Ambiguous? → assume + comment, never stall.
-6. The orchestrator never reads, writes, or executes product code or quality checks (lint/test/verify) or reviews — every such action is delegated to a single-responsibility subagent; the agent that implements a fix never reviews it. The orchestrator may do git plumbing and write `summary.md` + `code-review/round-<N>.md`.
+6. The orchestrator never reads, writes, or executes product code or quality checks (lint/test/verify) or reviews — every such action is delegated to a single-responsibility subagent; the agent that implements a fix never reviews it. The orchestrator may do git plumbing and write the run's log/state files (e.g. `summary.md`, `code-review/round-<N>.md`, task JSON, `verification-state.json`, `error/*.md`).

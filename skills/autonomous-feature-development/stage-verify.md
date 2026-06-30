@@ -8,7 +8,10 @@ their structured output.
 Spawn a **verifier subagent** (single responsibility). It:
 1. Runs the `verifying-implementation` skill — boots the system and exercises the
    changed endpoints/paths.
-2. Matches observed output against the acceptance criteria in `spec_path`.
+2. Matches observed output against the acceptance criteria in `spec_path`. **Mode B
+   has no `spec_path`** — there the verifier instead exercises the changed paths for
+   regressions only (boot succeeds and the changed endpoints/paths still work), with
+   no spec-acceptance match.
 3. Returns:
 
 ```json
@@ -46,7 +49,7 @@ After each verify (pass or fail), the orchestrator writes
 ```markdown
 # Verification Failed After 3 Rounds
 
-**Spec:** <spec_path>
+**Spec:** <spec_path, or "n/a — Mode B (regression-only verify)">
 
 ## Round 1
 <full verifier output>

@@ -99,6 +99,10 @@ result the orchestrator routes on:
 { "outcome": "pass" | "fail", "failures": ["<root-cause summary>", ...] }
 ```
 
+The verifier matches output against `spec_path`'s acceptance criteria. **Mode B has no
+`spec_path`**, so there the verifier runs in regression-only mode: boot + exercise the
+changed paths, no spec-acceptance match.
+
 ### 4. Single-responsibility subagents, implement ≠ review (Issue 2)
 
 Each subagent owns exactly one role: `verifier`, `reviewer` (×3), `consolidator`,
@@ -132,7 +136,7 @@ the orchestrator from subagent structured output:
 | ... | blocking/important/minor | ... | file:line |
 
 ## Disposition
-- Actionable (fixed this iteration): <ids of blocking + important>
+- Actionable (to fix this iteration): <ids of blocking + important>
 - Deferred (minor, NOT handled yet): <ids + summaries>
 ```
 
@@ -163,7 +167,9 @@ The skill touches logs, worktrees, and branches only — never product code.
 fix validated ones (per-phase pipeline) → **enter the same unified loop** (verify →
 review-until-clean, cap 5) → `superpowers:finishing-a-development-branch`. Mode B's
 only distinction is the validate-and-fix-external-issues entry step; after that the
-loop is identical to Mode A.
+loop is identical to Mode A — except that Mode B has no `spec_path`, so the inherited
+VERIFY step runs in **regression-only** mode (boot + exercise changed paths, no
+spec-acceptance match).
 
 ## Files Changed
 

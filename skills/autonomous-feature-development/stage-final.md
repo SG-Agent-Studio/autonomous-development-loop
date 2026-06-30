@@ -34,7 +34,7 @@ Write `.loop-logs/<id>/logs/summary.md`:
 **Rounds:** <rounds_completed from .loop-logs/<id>/tasks/verification-state.json>
 
 ## Review
-**Loop iterations:** <N> of ≤5
+**Loop iterations:** <N> of ≤5 (<N> = count of `.loop-logs/<id>/code-review/round-<N>.md` files)
 **Actionable issues found:** N
 **Actionable issues fixed:** N
 **Minor issues deferred (NOT handled yet):**
