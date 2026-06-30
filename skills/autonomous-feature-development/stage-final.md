@@ -11,7 +11,7 @@ If either fails, fix the issues before proceeding.
 
 ## Step 4.2 — Write summary
 
-Write `.loop-logs/logs/summary.md`:
+Write `.loop-logs/<id>/logs/summary.md`:
 
 ```markdown
 # Loop Summary
@@ -28,14 +28,17 @@ Write `.loop-logs/logs/summary.md`:
 | <task-id> | completed / failed | N | <name from `### Task N: <name>` heading in plan> |
 
 **Completed:** N/total
-**Failed:** N/total (see .loop-logs/error/ for details)
+**Failed:** N/total (see .loop-logs/<id>/error/ for details)
 
 ## Verification
-**Rounds:** <rounds_completed from .loop-logs/tasks/verification-state.json>
+**Rounds:** <rounds_completed from .loop-logs/<id>/tasks/verification-state.json>
 
 ## Review
-**Issues found:** N
-**Issues fixed:** N
+**Loop iterations:** <N> of ≤5
+**Actionable issues found:** N
+**Actionable issues fixed:** N
+**Minor issues deferred (NOT handled yet):**
+<list each deferred minor from the final review round, or "none">
 ```
 
 ## Step 4.3 — Commit
@@ -52,7 +55,7 @@ git commit -m "feat(<scope>): <description derived from plan Goal line>"
 git commit -m "wip: partial — <completed>/<total> tasks completed
 
 Failed tasks:
-<task-id-1>: see .loop-logs/error/<task-id-1>.md"
+<task-id-1>: see .loop-logs/<id>/error/<task-id-1>.md"
 ```
 
 ## Step 4.4 — Branch completion
