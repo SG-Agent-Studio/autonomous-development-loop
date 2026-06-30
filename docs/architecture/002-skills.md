@@ -2,11 +2,12 @@
 
 ## Overview
 
-| Skill                            | Entry Point                                      | Purpose                                                                                     | Trigger                                                                                                            |
-| -------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `autonomous-feature-development` | `skills/autonomous-feature-development/SKILL.md` | Fully autonomous pipeline: parallel worktree implementation, verification, review, fix loop | After brainstorming/planning session with `plan_path` + `spec_path` ready; or after receiving code review feedback |
-| `enhanced-review`                | `skills/enhanced-review/SKILL.md`                | Linus-style review for code, specs, or plans with five-why reflection before any verdict    | Before merging code; before implementing a spec or plan (shift-left); when something feels off                     |
-| `verifying-implementation`       | `skills/verifying-implementation/SKILL.md`       | Boot the system and verify against acceptance criteria using a fresh subagent               | Work touches a running service; plan has a Verification section; AC describe observable runtime behavior           |
+| Skill                            | Entry Point                                      | Purpose                                                                                                | Trigger                                                                                                            |
+| -------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `autonomous-feature-development` | `skills/autonomous-feature-development/SKILL.md` | Fully autonomous pipeline: parallel worktree implementation, then a capped verify↔review loop          | After brainstorming/planning session with `plan_path` + `spec_path` ready; or after receiving code review feedback |
+| `enhanced-review`                | `skills/enhanced-review/SKILL.md`                | Linus-style review for code, specs, or plans with five-why reflection before any verdict              | Before merging code; before implementing a spec or plan (shift-left); when something feels off                     |
+| `verifying-implementation`       | `skills/verifying-implementation/SKILL.md`       | Boot the system and verify against acceptance criteria using a fresh subagent                         | Work touches a running service; plan has a Verification section; AC describe observable runtime behavior           |
+| `cleanup-loop-logs`              | `skills/cleanup-loop-logs/SKILL.md`              | Human-only purge of one run's `.loop-logs/<id>/` logs + orphaned worktrees/branches                   | Human-triggered only (`disable-model-invocation`); never invoked by the model                                     |
 
 ---
 
@@ -23,16 +24,19 @@ flowchart TD
     VBC[superpowers:verification-before-completion\nexternal plugin]
     PW[playwright MCP\nbundled in .mcp.json]
 
-    AFD -->|Stage 2| VI
-    AFD -->|Stage 3 Reviewer A| ER
-    AFD -->|Stage 3 Reviewer B| PT
-    AFD -->|Stage 3 Reviewer C| SM
-    AFD -->|Stage 3 per-issue Phase 2 + 4| ER
+    AFD -->|loop: VERIFY step verifier subagent| VI
+    AFD -->|loop: REVIEW Reviewer A| ER
+    AFD -->|loop: REVIEW Reviewer B| PT
+    AFD -->|loop: REVIEW Reviewer C| SM
+    AFD -->|loop: per-issue plan + code review| ER
     AFD -->|Stage 4 branch completion| SP
 
     VI -->|fallback when no Tier-3 trigger| VBC
     VI -->|UI verification| PW
 ```
+
+`cleanup-loop-logs` is intentionally omitted — it has no skill dependencies, is
+human-triggered only, and touches logs/worktrees/branches, never product code.
 
 **Required external plugins:**
 
@@ -49,19 +53,27 @@ Full pipeline from plan to merged branch. Two modes selected automatically:
 
 ```mermaid
 flowchart LR
-    Q{plan_path + spec_path\nin context?} -->|yes| A[Mode A: Full Pipeline\nStages 0–4]
-    Q -->|no| B[Mode B: Review Fix Only\nvalidate + fix existing issues]
+    Q{plan_path + spec_path\nin context?} -->|yes| A[Mode A: Full Pipeline\nStage 0–1, then verify↔review loop, then Stage 4]
+    Q -->|no| B[Mode B: Review Fix Only\nvalidate + fix, then same loop]
 ```
+
+Stages 2 and 3 are a single **capped verify↔review loop** (≤5 iterations): each
+iteration runs the VERIFY step, then REVIEW, fixes the actionable (blocking+important)
+issues, and re-verifies — exiting when a review raises zero actionable issues. The run
+is namespaced by a single `id` computed in Stage 0; all logs live under
+`.loop-logs/<id>/`. See `001-agent-workflow.md` for the full loop diagram.
 
 **File structure:**
 
-| File                  | Purpose                                                                                              |
-| --------------------- | ---------------------------------------------------------------------------------------------------- |
-| `SKILL.md`            | Mode selection, prerequisites, hard rules                                                            |
-| `stage-impl.md`       | Stage 0 (guard/setup) + Stage 1 (parallel TDD worktrees)                                             |
-| `stage-verify.md`     | Stage 2 (boot system, verify against spec, fix loop)                                                 |
-| `stage-review-fix.md` | Stage 3 Mode A (spawn reviewers, consolidate, parallel fix) + Mode B (validate received issues, fix) |
-| `stage-final.md`      | Stage 4 (lint/format, summary, commit, branch completion)                                            |
+| File                  | Purpose                                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `SKILL.md`            | Mode selection, run `id`, prerequisites, hard rules (incl. orchestrator purity)                                         |
+| `stage-impl.md`       | Stage 0 (guard/setup, compute `id`) + Stage 1 (parallel TDD worktrees)                                                  |
+| `stage-verify.md`     | Loop VERIFY step: orchestrator spawns a verifier subagent (structured pass/fail), fixes via subagents, ≤3 inner rounds  |
+| `stage-review-fix.md` | Loop control + Stage 3 REVIEW (spawn reviewers, consolidate, write `code-review/round-<N>.md`, parallel fix) + Mode B entry |
+| `stage-final.md`      | Stage 4 (lint/format, summary with loop iterations + deferred minors, commit, branch completion)                        |
+| `log-schema.md`       | Single source of truth for the task log format                                                                          |
+| `log-sample.md`       | Two-attempt example for agents writing task logs                                                                        |
 
 **Hard rules (both modes):**
 
@@ -69,6 +81,11 @@ flowchart LR
 - Squash merge only — never plain `git merge` on worktree branches.
 - Always commit at the end, even partial (`wip:` prefix if any task failed).
 - All verifiable signals must be green before advancing to the next stage.
+- Ambiguous? → assume + comment, never stall.
+- **Orchestrator purity:** the orchestrator never reads, writes, or executes product code
+  or quality checks (lint/test/verify) or reviews — every such action is delegated to a
+  single-responsibility subagent; the agent that implements a fix never reviews it. The
+  orchestrator may do git plumbing and write the run's log/state files.
 
 ---
 
@@ -95,7 +112,7 @@ Linus-style review with an evidence-first discipline: no verdict before five-why
 | `references/output-format.md`       | Review output structure                         |
 | `references/examples.md`            | Good/bad taste illustrations                    |
 
-**Used internally by:** `autonomous-feature-development` Stage 3 (parallel reviewer + per-issue plan/code review phases).
+**Used internally by:** `autonomous-feature-development` loop REVIEW step (parallel reviewer + per-issue plan/code review phases). Each invocation runs in its own single-responsibility subagent, distinct from the agent that implemented the change.
 
 ---
 
@@ -130,4 +147,32 @@ Tier 3 is mandatory when any trigger fires. Tests passing alone is not done.
 | `subagent-template.md`        | Dispatch contract — prompt template for the fresh subagent |
 | `acceptance-criteria-gate.md` | What to do when AC are missing or vague                    |
 
-**Used internally by:** `autonomous-feature-development` Stage 2 (verification loop).
+**Used internally by:** `autonomous-feature-development` loop VERIFY step. The orchestrator does not run this skill directly — it spawns a **verifier subagent** that runs the skill and returns structured `{ outcome, failures }`. In Mode B (no `spec_path`) the verifier runs regression-only: boot + exercise the changed paths, no spec-acceptance match.
+
+---
+
+### `cleanup-loop-logs`
+
+Human-triggered cleanup for one autonomous-development run. Frontmatter sets
+`disable-model-invocation: true`, so the orchestrator can never invoke it — it only runs
+when a human asks.
+
+Deletes the run's `.loop-logs/<id>/` log tree and prunes the worktrees/branches that run
+left behind. Touches logs, worktrees, and branches only — never product code.
+
+**Flow:**
+
+1. **Select target** — use the passed `id`, derive it from a passed plan path, or (no
+   arg) list every run newest-first and ask which `id` to clean, or `all`.
+2. **Gather & confirm** — print the exact log tree, worktrees, and branches that will be
+   removed; wait for an explicit "yes" (deletion is irreversible).
+3. **Prune orphans** — `git worktree remove --force` + `git branch -D` for each approved
+   leftover.
+4. **Delete logs** — `rm -rf .loop-logs/<id>/` (done last, so task ids stay available for
+   worktree/branch attribution in steps 2–3).
+
+**File structure:**
+
+| File       | Purpose                                                  |
+| ---------- | -------------------------------------------------------- |
+| `SKILL.md` | Target selection, confirmation gate, prune + delete flow |
