@@ -11,7 +11,18 @@ From conversation context, identify `plan_path` and `spec_path`. Check each file
 3. Does `spec_path` exist? No → print `ERROR: Spec file not found: <spec_path>` and stop.
 4. Is `spec_path` non-empty (size > 0)? No → print `ERROR: Spec file is empty: <spec_path>` and stop.
 
-### Step 0.2 — Branch guard
+### Step 0.2 — Compute run `id`
+
+Derive a single `id` that namespaces every log artifact for this run:
+
+- **Mode A (this stage):** `id` = plan filename basename with `.md` stripped (keep the
+  date prefix). Example: `2026-06-16-ticket-3-ingestion.md` → `2026-06-16-ticket-3-ingestion`.
+- **Mode B (set in `stage-review-fix.md`):** `id` = `<today>-review-<current-branch>`.
+
+Every log path in every stage is `.loop-logs/<id>/...`. Substitute the computed `id`
+wherever `<id>` appears below. Create `.loop-logs/<id>/` lazily on first write.
+
+### Step 0.3 — Branch guard
 
 Run: `git rev-parse --abbrev-ref HEAD`
 
@@ -23,7 +34,7 @@ Run: `git rev-parse --abbrev-ref HEAD`
   - Run: `git checkout -b <branch-name>`
 - Otherwise: continue on current branch.
 
-### Step 0.3 — Parse tasks
+### Step 0.4 — Parse tasks
 
 Read `plan_path`. Extract every heading matching `### Task N: <name>` (N = a number). For each match:
 
@@ -31,9 +42,9 @@ Read `plan_path`. Extract every heading matching `### Task N: <name>` (N = a num
   - Example: `### Task 3: Tavily Service` → `task-3-tavily-service`
 - Record line range (from this heading to next `### Task` heading or end of file)
 
-### Step 0.4 — Initialize task files
+### Step 0.5 — Initialize task files
 
-For each parsed task, write `.loop-logs/tasks/<task-id>.json`:
+For each parsed task, write `.loop-logs/<id>/tasks/<task-id>.json`:
 
 ```json
 {
@@ -47,9 +58,10 @@ For each parsed task, write `.loop-logs/tasks/<task-id>.json`:
 }
 ```
 
-**Resume guard:** If `.loop-logs/tasks/<task-id>.json` already exists with `"status": "completed"`, skip that task entirely — do not overwrite, do not spawn agent for it.
+**Resume guard:** If `.loop-logs/<id>/tasks/<task-id>.json` already exists with `"status": "completed"`, skip that task entirely — do not overwrite, do not spawn agent for it.
 
 Print after all files written:
+
 ```
 Setup complete. Found <N> tasks:
   - <task-id-1>
@@ -60,27 +72,26 @@ Working branch: <current-branch>
 
 ---
 
-
 ## Orchestrator: Agent Output Schema and File Ownership
 
 File writes are split by owner:
 
-| File | Owner | When written |
-|------|-------|--------------|
-| `.loop-logs/tasks/<task-id>.json` | Orchestrator | Before spawn (`in_progress`), after agent returns (`completed`/`failed`) |
-| `.loop-logs/logs/<task-id>.md` | Agent (written directly, both Workflow and non-Workflow mode) | Incrementally — appended after each TDD attempt |
-| `.loop-logs/error/<task-id>.md` | Agent (written directly, both Workflow and non-Workflow mode) | On hard stop (3 failures exhausted) |
-| `.loop-logs/logs/summary.md` | Orchestrator (Stage 4 only) | Stage 4 only |
-| `.loop-logs/tasks/verification-state.json` | Orchestrator | After each verification round (Stage 2) |
+| File                                            | Owner                                                         | When written                                                             |
+| ----------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `.loop-logs/<id>/tasks/<task-id>.json`          | Orchestrator                                                  | Before spawn (`in_progress`), after agent returns (`completed`/`failed`) |
+| `.loop-logs/<id>/logs/<task-id>.md`             | Agent (written directly, both Workflow and non-Workflow mode) | Incrementally — appended after each TDD attempt                          |
+| `.loop-logs/<id>/error/<task-id>.md`            | Agent (written directly, both Workflow and non-Workflow mode) | On hard stop (3 failures exhausted)                                      |
+| `.loop-logs/<id>/logs/summary.md`               | Orchestrator (Stage 4 only)                                   | Stage 4 only                                                             |
+| `.loop-logs/<id>/tasks/verification-state.json` | Orchestrator                                                  | After each verification round (Stage 2)                                  |
 
 ### Task state lifecycle (orchestrator responsibility)
 
 Before calling each per-task agent, the orchestrator:
 
-1. Writes `{ "status": "in_progress", "worktree": ".worktrees/<task-id>" }` into `.loop-logs/tasks/<task-id>.json` (merging with the existing fields from Stage 0).
+1. Writes `{ "status": "in_progress", "worktree": ".worktrees/<task-id>" }` into `.loop-logs/<id>/tasks/<task-id>.json` (merging with the existing fields from Stage 0).
 2. Computes the absolute repo root path (e.g. via `git rev-parse --show-toplevel`) and injects two paths into the agent's prompt:
-   - `LOG_PATH`: `<absolute-repo-root>/.loop-logs/logs/<task-id>.md`
-   - `ERROR_LOG_PATH`: `<absolute-repo-root>/.loop-logs/error/<task-id>.md`
+   - `LOG_PATH`: `<absolute-repo-root>/.loop-logs/<id>/logs/<task-id>.md`
+   - `ERROR_LOG_PATH`: `<absolute-repo-root>/.loop-logs/<id>/error/<task-id>.md`
 
 After the agent returns, the orchestrator writes the final task state from the agent's structured output (see schema below).
 
@@ -100,7 +111,7 @@ When implementing Stage 1 via the Workflow tool, use the `schema` option on each
 
 ### Orchestrator writes task JSON from schema output
 
-After each agent returns, merge into `.loop-logs/tasks/<task-id>.json`:
+After each agent returns, merge into `.loop-logs/<id>/tasks/<task-id>.json`:
 
 ```json
 {
@@ -118,12 +129,11 @@ If `status` is `"failed"`, omit `"tdd-loop-complete"` from `completed_steps`.
 the "Per-Task Agent Instructions" section below. Agents write `LOG_PATH` and
 `ERROR_LOG_PATH` directly in both modes — the orchestrator never writes those files.
 
-
 ---
 
 ## Stage 1: Parallel Implementation
 
-Spawn one worktree agent per task **simultaneously** — all at once, not sequentially. Each agent receives its `task_id` and the path to its task file: `.loop-logs/tasks/<task-id>.json`.
+Spawn one worktree agent per task **simultaneously** — all at once, not sequentially. Each agent receives its `task_id` and the path to its task file: `.loop-logs/<id>/tasks/<task-id>.json`.
 
 ---
 
@@ -131,7 +141,7 @@ Spawn one worktree agent per task **simultaneously** — all at once, not sequen
 
 #### Agent Step A — Read task file
 
-Read `.loop-logs/tasks/<task-id>.json`. Extract `plan`, `spec`, `attempt`, `task_id`.
+Read `.loop-logs/<id>/tasks/<task-id>.json`. Extract `plan`, `spec`, `attempt`, `task_id`.
 
 #### Agent Step B — Create worktree
 
@@ -142,8 +152,9 @@ git worktree add .worktrees/<task-id> -b worktree/<task-id>
 Switch working directory to `.worktrees/<task-id>` for ALL remaining steps. All bash commands, file reads, and git operations MUST run from within `.worktrees/<task-id>`.
 
 The orchestrator injects two absolute paths into this agent's prompt before spawning:
-- `LOG_PATH` — absolute path to `.loop-logs/logs/<task-id>.md` in the main repo root
-- `ERROR_LOG_PATH` — absolute path to `.loop-logs/error/<task-id>.md` in the main repo root
+
+- `LOG_PATH` — absolute path to `.loop-logs/<id>/logs/<task-id>.md` in the main repo root
+- `ERROR_LOG_PATH` — absolute path to `.loop-logs/<id>/error/<task-id>.md` in the main repo root
 
 Use these paths for all log writes in Step D. Never use relative paths for log files — the working directory is the worktree, not the repo root.
 
@@ -166,6 +177,7 @@ Write the **Task Header** (Tier 1 from `log-schema.md`) to `LOG_PATH` now, befor
 **Per-attempt logging:** Follow `log-schema.md` Tier 2 for the Per-Attempt Block. Append it to `LOG_PATH` after each attempt completes.
 
 **Implement:**
+
 1. Write the failing test first. Run it and confirm it fails with the expected reason.
 2. Write the minimal implementation to make it pass.
 3. Run verifiable signals in order:
@@ -177,6 +189,7 @@ Write the **Task Header** (Tier 1 from `log-schema.md`) to `LOG_PATH` now, befor
 Update task JSON: `"status": "completed"`, `"attempt": <N>`, append `"tdd-loop-complete"` to `completed_steps`.
 
 Commit in worktree:
+
 ```bash
 git add -A
 git commit -m "feat(<scope>): <task description>"
@@ -194,6 +207,7 @@ Increment `attempt` in task JSON.
 **Hard Stop (3 attempts exhausted):**
 
 Write `ERROR_LOG_PATH`:
+
 ```markdown
 # Failed: <task-id>
 
@@ -203,18 +217,22 @@ Write `ERROR_LOG_PATH`:
 **Attempts:** 3
 
 ## Attempt 1
+
 <full lint + test output from log>
 <output of: git diff>
 
 ## Attempt 2
+
 <full lint + test output from log>
 <output of: git diff>
 
 ## Attempt 3
+
 <full lint + test output from log>
 <output of: git diff>
 
 ## Reproduction
+
 cd <worktree path>
 just lint
 just test-unit
@@ -223,6 +241,7 @@ just test-unit
 Update task JSON: `"status": "failed"`.
 
 Commit:
+
 ```bash
 git add -A
 git commit -m "wip: failed <task-id> after 3 attempts"
@@ -237,6 +256,7 @@ Stop.
 Wait for all worktree agents to complete (success or hard-stop).
 
 **For each task with `"status": "completed"`:**
+
 ```bash
 git merge --squash worktree/<task-id>
 git commit -m "feat(<scope>): <task description>"
@@ -245,21 +265,25 @@ git branch -D worktree/<task-id>
 ```
 
 **For each task with `"status": "failed"`:**
+
 - Do NOT merge its worktree.
-- Log in `.loop-logs/logs/summary.md`: `FAILED: <task-id> — see .loop-logs/error/<task-id>.md`
+- Log in `.loop-logs/<id>/logs/summary.md`: `FAILED: <task-id> — see .loop-logs/<id>/error/<task-id>.md`
 
 **After all merges**, verify the history is linear:
+
 ```bash
 git log --oneline
 ```
+
 No merge commits should appear. If any do, the wrong merge strategy was used.
 
 ---
+
 ## Stage 1 Integrity Gate
 
 **This check is mandatory. Do not advance to Stage 2 until it passes.**
 
-Read every `.loop-logs/tasks/<task-id>.json` for all tasks parsed in Stage 0.
+Read every `.loop-logs/<id>/tasks/<task-id>.json` for all tasks parsed in Stage 0.
 
 **Check 1 — Status**
 Every task file must have `"status": "completed"` or `"status": "failed"`.
@@ -268,19 +292,19 @@ orchestrator or agent did not complete its bookkeeping.
 
 **Check 2 — Log files**
 Every task with `"status": "completed"` must have a corresponding file at
-`.loop-logs/logs/<task-id>.md`.
+`.loop-logs/<id>/logs/<task-id>.md`.
 
 **If either check fails**, print exactly:
+
 ```
 STOP — Stage 1 integrity check failed.
 
 Missing or stale bookkeeping detected:
 <task-id>: status="pending" (expected: completed | failed)
-<task-id>: missing .loop-logs/logs/<task-id>.md
+<task-id>: missing .loop-logs/<id>/logs/<task-id>.md
 ```
 
 Do NOT proceed to Stage 2. Investigate which agent or orchestrator step was skipped.
 Verify the agent prompt included steps A–D verbatim. Under this design, agents always write log files directly — the orchestrator never writes them.
 
 **If all checks pass:** Print `Integrity gate passed — advancing to Stage 2.` and proceed.
-
