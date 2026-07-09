@@ -18,8 +18,10 @@ user to install it** (see the plugin README) rather than failing silently:
 - **`ponytail`** (optional) — used as one of three parallel reviewers in Stage 3
   Mode A (`ponytail:ponytail-review`). If absent, skip that reviewer and proceed
   with the remaining two.
-- **playwright MCP** (required for UI work) — used transitively by
-  `verifying-implementation` during Stage 2. Bundled in this plugin's `.mcp.json`.
+- **playwright MCP** — required for UI verification when `interaction_mode ==
+  autonomous` (bundled in this plugin's `.mcp.json`). When `human-in-loop`, MCP is
+  optional: if absent, UI verification degrades to a human checklist handoff (see
+  `stage-verify.md`).
 
 ## Mode Selection
 
@@ -34,6 +36,28 @@ digraph mode {
 }
 ```
 
+## Interaction Mode
+
+`interaction_mode` controls how the orchestrator handles missing capabilities and
+human handoffs. It is distinct from the Mode A / Mode B pipeline selection above.
+
+- `autonomous` (default) — assumed unless the invoking skill sets otherwise. Fail
+  fast: a missing capability is a hard-stop error. Never pause, never ask.
+- `human-in-loop` — set only by the `human-in-loop-feature-development` wrapper.
+  Clarify with the human on a missing capability; pause and wait for input when
+  human action is needed.
+
+The orchestrator branches on `interaction_mode` at exactly three junctures:
+
+1. **Stage 0 preflight fallback** — an unresolved command or absent Playwright MCP.
+2. **Stage 2 verify fallback** — a UI acceptance criterion needs the browser but MCP is absent.
+3. **Stage 4 commit** — auto-commit vs leave-unstaged handoff.
+
+Everywhere else is identical across both values. **Subagents never branch on
+`interaction_mode`** — they run to completion and cannot pause. They receive
+concrete inputs (resolved commands, `mcp_available`) and keep assume-and-comment
+behavior internally.
+
 ## Mode A: Full Pipeline
 
 Read and execute each stage file in order:
@@ -47,7 +71,9 @@ Read and execute each stage file in order:
 **Run `id`:** computed once in Stage 0 (`stage-impl.md` Step 0.2); all logs live under
 `.loop-logs/<id>/`. Mode B `id` = `<today>-review-<branch>`.
 
-**FULLY AUTONOMOUS.** Never pause. Never ask. If ambiguous → reasonable assumption + code comment.
+**When `interaction_mode == autonomous`: FULLY AUTONOMOUS** — never pause, never
+ask; if ambiguous → reasonable assumption + code comment. When `human-in-loop`,
+the orchestrator may pause at the three junctures above; subagents remain autonomous.
 
 ## Mode B: Standalone Review Fix
 
@@ -57,7 +83,11 @@ Issues already exist in conversation context. Read `./stage-review-fix.md`: the 
 
 1. Never delete tests to make them pass.
 2. Squash merge only — never plain `git merge` on worktree branches.
-3. Always commit at the end, even partial (`wip:` prefix if any task failed).
+3. `interaction_mode == autonomous`: always commit at the end, even partial (`wip:`
+   prefix if any task failed). `human-in-loop`: never auto-commit — leave changes
+   unstaged on the branch for the human (see `stage-final.md`).
 4. All verifiable signals must be green before advancing to the next stage.
-5. Ambiguous? → assume + comment, never stall.
+5. Ambiguous? Subagents always assume + comment, never stall. The orchestrator does
+   likewise when `interaction_mode == autonomous`; when `human-in-loop`, it clarifies
+   at the three junctures instead.
 6. The orchestrator never reads, writes, or executes product code or quality checks (lint/test/verify) or reviews — every such action is delegated to a single-responsibility subagent; the agent that implements a fix never reviews it. The orchestrator may do git plumbing and write the run's log/state files (e.g. `summary.md`, `code-review/round-<N>.md`, task JSON, `verification-state.json`, `error/*.md`).
