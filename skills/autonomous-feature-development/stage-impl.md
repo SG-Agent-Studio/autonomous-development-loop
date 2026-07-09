@@ -108,6 +108,21 @@ Inject the resolved commands into **every subagent prompt** (alongside `LOG_PATH
 so agents never re-discover. Do **not** write config-discovered commands back to
 memory — only asked answers are persisted.
 
+### Step 0.7 — Probe verification capability (Mode A)
+
+Check whether the bundled Playwright MCP tools are available → `mcp_available`
+(y/n). Scan `spec_path` acceptance criteria for browser-observable behavior
+(rendered pages, UI state, client-side interaction).
+
+- A UI AC is present AND `mcp_available == n`:
+  - `interaction_mode == autonomous`: **hard-stop**. Print
+    `ERROR: UI acceptance criteria require Playwright MCP, which is unavailable.` and stop.
+  - `interaction_mode == human-in-loop`: print a heads-up that UI verification will
+    be handed to the human via a checklist, and continue.
+
+Record `mcp_available` and inject it into the verifier subagent prompt. Mode B has
+no `spec_path` — skip the AC-scan; the verify-time per-AC backstop below still applies.
+
 ---
 
 ## Orchestrator: Agent Output Schema and File Ownership
