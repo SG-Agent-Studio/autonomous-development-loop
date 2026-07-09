@@ -3,8 +3,8 @@
 ## Step 4.1 — Final lint and format
 
 ```bash
-just lint    # must exit 0
-just format  # must exit 0
+<lint_cmd>    # must exit 0
+<format_cmd>  # must exit 0 — skip if the project has no format command
 ```
 
 If either fails, fix the issues before proceeding.

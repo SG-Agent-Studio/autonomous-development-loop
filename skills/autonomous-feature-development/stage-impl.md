@@ -70,6 +70,44 @@ Setup complete. Found <N> tasks:
 Working branch: <current-branch>
 ```
 
+### Step 0.6 — Resolve project commands
+
+The pipeline needs four commands. Resolve each **once** here; never hardcode a tool.
+
+| Variable       | Purpose         | Required                        |
+| -------------- | --------------- | ------------------------------- |
+| `<lint_cmd>`   | lint            | yes                             |
+| `<test_cmd>`   | unit tests      | yes                             |
+| `<format_cmd>` | format          | no (skip step if unresolved)    |
+| `<start_cmd>`  | boot the system | no (only for Tier-3/UI verify)  |
+
+Resolve in precedence order:
+
+1. A `## Commands` section in `CLAUDE.md` or `AGENTS.md`:
+
+   ```markdown
+   ## Commands
+   - Lint: `<cmd>`
+   - Test: `<cmd>`
+   - Format: `<cmd>`
+   - Start: `<cmd>`
+   ```
+
+2. Project config — `justfile`, `package.json` scripts, `Makefile`,
+   `pyproject.toml`/uv, etc. (e.g. `package.json` `"scripts": { "lint": ... }` → `pnpm lint`).
+
+If a **required** command (`lint`, `test`) is still unresolved:
+
+- `interaction_mode == autonomous`: **hard-stop**. Print
+  `ERROR: unresolved required command(s): <names>. Add a "## Commands" section to CLAUDE.md/AGENTS.md.` and stop.
+- `interaction_mode == human-in-loop`: ask the user for each unresolved command,
+  write the answers into a `## Commands` section in `CLAUDE.md` (create it if
+  absent), then continue.
+
+Inject the resolved commands into **every subagent prompt** (alongside `LOG_PATH`),
+so agents never re-discover. Do **not** write config-discovered commands back to
+memory — only asked answers are persisted.
+
 ---
 
 ## Orchestrator: Agent Output Schema and File Ownership
@@ -180,9 +218,9 @@ Write the **Task Header** (Tier 1 from `log-schema.md`) to `LOG_PATH` now, befor
 
 1. Write the failing test first. Run it and confirm it fails with the expected reason.
 2. Write the minimal implementation to make it pass.
-3. Run verifiable signals in order:
-   - `just lint` — must exit 0
-   - `just test-unit` — must exit 0
+3. Run verifiable signals in order (`<lint_cmd>`/`<test_cmd>` = the commands injected by the orchestrator in Step 0.6):
+   - `<lint_cmd>` — must exit 0
+   - `<test_cmd>` — must exit 0
 
 **On pass (both green):**
 
@@ -234,8 +272,8 @@ Write `ERROR_LOG_PATH`:
 ## Reproduction
 
 cd <worktree path>
-just lint
-just test-unit
+<lint_cmd>
+<test_cmd>
 ```
 
 Update task JSON: `"status": "failed"`.

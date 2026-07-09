@@ -78,7 +78,7 @@ You are the behavior-verification subagent. Run the Tier 3 walk-through against 
 - (small changes to docker-compose.yml)
 
 ## How to start
-`just up-capstone`. Wait for "Application startup complete" in app log.
+`<start_cmd>`. Wait for "Application startup complete" in app log.
 
 ## Where to observe
 - API: http://localhost:3001
