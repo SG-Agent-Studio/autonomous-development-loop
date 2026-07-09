@@ -20,6 +20,7 @@ on their own.
 | Skill | Use it when |
 |-------|-------------|
 | `autonomous-feature-development` | You have a plan + spec ready to implement, or you received code-review feedback that needs validation and fixing. Runs the full pipeline or a standalone review-fix. |
+| `human-in-loop-feature-development` | You are developing locally with a human present and want the pipeline to clarify unresolved commands, hand off UI verification when Playwright MCP is unavailable, and leave changes unstaged for you to commit. |
 | `verifying-implementation` | Work has observable runtime behavior (a service, DB, UI, queue, job). Gates a "done" claim behind a fresh subagent observing the running system meet its acceptance criteria. |
 | `enhanced-review` | Before merging code, or before implementing a spec/plan. Linus-Torvalds-style review with a five-why reflection so every verdict is evidence-backed. |
 
@@ -35,9 +36,10 @@ use. If a dependency is missing, the relevant skill will stop and tell you.
 | **playwright MCP** | Tier 3 UI behavior verification in `verifying-implementation` | Bundled in this plugin's `.mcp.json` (`pnpx @playwright/mcp@latest`). Requires `pnpm`/`pnpx` on PATH. Without it, UI verification degrades to the user-confirmation fallback. |
 | [`ponytail`](https://github.com/) plugin (`ponytail:ponytail-review`) | Mode A review stage in `autonomous-feature-development` | Used as one of three parallel reviewers. If absent, that reviewer is skipped. |
 
-The pipeline also expects a project-local `just` toolchain exposing
-`just lint`, `just format`, and `just test-unit`. Adapt the stage files if your
-project uses different commands.
+The pipeline needs project-local `lint` and `test` commands (with optional
+`format` and `start`). It resolves them at Stage 0 from a `## Commands` section in
+`CLAUDE.md`/`AGENTS.md` or from project config (`justfile`, `package.json`,
+`Makefile`, `pyproject.toml`, …) — no specific tool such as `just` is required.
 
 ## Installation
 
@@ -61,7 +63,7 @@ This repo doubles as its own single-plugin marketplace for both agents.
 2. In Cursor, add it as a marketplace source and install the plugin — Cursor reads
    `.cursor-plugin/marketplace.json` and `.cursor-plugin/plugin.json` from the repo
    root, discovering the same `skills/` folder.
-3. Reload Cursor (**Developer: Reload Window**) and confirm the three skills appear
+3. Reload Cursor (**Developer: Reload Window**) and confirm the skills appear
    in settings.
 4. Ensure `pnpm`/`pnpx` is on PATH for the bundled playwright MCP (`mcp.json`).
 5. `superpowers` and `ponytail` are **not** on the Cursor marketplace. Their
@@ -76,7 +78,10 @@ this implementation" once a feature with runtime behavior is built.
 
 The autonomous pipeline is **fully autonomous** by design — it does not pause for
 input mid-run. Read `skills/autonomous-feature-development/SKILL.md` for the stage
-breakdown and hard rules before first use.
+breakdown and hard rules before first use. For local, human-present runs that
+clarify missing commands, hand off UI verification without Playwright MCP, and
+leave changes unstaged for you to commit, invoke `human-in-loop-feature-development`
+instead.
 
 ## Architecture
 

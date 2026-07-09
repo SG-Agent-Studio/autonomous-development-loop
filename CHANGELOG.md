@@ -3,6 +3,12 @@
 All notable changes to this plugin are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Add `human-in-loop-feature-development` skill and `interaction_mode` flag: resolve project commands instead of requiring `just`, hand off UI verification when Playwright MCP is unavailable, and leave changes unstaged (with robust worktree cleanup) for manual commit.
+
 ## [0.2.0] - 2026-06-30
 
 ### Added

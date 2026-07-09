@@ -5,6 +5,7 @@
 | Skill                            | Entry Point                                      | Purpose                                                                                                | Trigger                                                                                                            |
 | -------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `autonomous-feature-development` | `skills/autonomous-feature-development/SKILL.md` | Fully autonomous pipeline: parallel worktree implementation, then a capped verify↔review loop          | After brainstorming/planning session with `plan_path` + `spec_path` ready; or after receiving code review feedback |
+| `human-in-loop-feature-development` | `skills/human-in-loop-feature-development/SKILL.md` | Thin wrapper: runs the engine with `interaction_mode = human-in-loop` — clarifies missing commands, hands off UI verification without MCP, leaves changes unstaged | Local, human-present development; can't auto-commit; missing `just`/Playwright MCP |
 | `enhanced-review`                | `skills/enhanced-review/SKILL.md`                | Linus-style review for code, specs, or plans with five-why reflection before any verdict              | Before merging code; before implementing a spec or plan (shift-left); when something feels off                     |
 | `verifying-implementation`       | `skills/verifying-implementation/SKILL.md`       | Boot the system and verify against acceptance criteria using a fresh subagent                         | Work touches a running service; plan has a Verification section; AC describe observable runtime behavior           |
 | `cleanup-loop-logs`              | `skills/cleanup-loop-logs/SKILL.md`              | Human-only purge of one run's `.loop-logs/<id>/` logs + orphaned worktrees/branches                   | Human-triggered only (`disable-model-invocation`); never invoked by the model                                     |
@@ -15,6 +16,7 @@
 
 ```mermaid
 flowchart TD
+    HIL[human-in-loop-feature-development]
     AFD[autonomous-feature-development]
     ER[enhanced-review]
     VI[verifying-implementation]
@@ -23,6 +25,8 @@ flowchart TD
     SP[superpowers:finishing-a-development-branch\nexternal plugin]
     VBC[superpowers:verification-before-completion\nexternal plugin]
     PW[playwright MCP\nbundled in .mcp.json]
+
+    HIL -->|sets interaction_mode = human-in-loop| AFD
 
     AFD -->|loop: VERIFY step verifier subagent| VI
     AFD -->|loop: REVIEW Reviewer A| ER
@@ -79,13 +83,44 @@ is namespaced by a single `id` computed in Stage 0; all logs live under
 
 - Never delete tests to make them pass.
 - Squash merge only — never plain `git merge` on worktree branches.
-- Always commit at the end, even partial (`wip:` prefix if any task failed).
+- `interaction_mode == autonomous`: always commit at the end, even partial (`wip:` prefix if any task failed); `human-in-loop`: leave changes unstaged for the human.
 - All verifiable signals must be green before advancing to the next stage.
-- Ambiguous? → assume + comment, never stall.
+- Ambiguous? Subagents always assume + comment; the orchestrator does likewise when `autonomous`, and clarifies at the three junctures when `human-in-loop`.
 - **Orchestrator purity:** the orchestrator never reads, writes, or executes product code
   or quality checks (lint/test/verify) or reviews — every such action is delegated to a
   single-responsibility subagent; the agent that implements a fix never reviews it. The
   orchestrator may do git plumbing and write the run's log/state files.
+
+---
+
+### `human-in-loop-feature-development`
+
+Thin wrapper for local, human-present runs. It sets `interaction_mode =
+human-in-loop` and invokes `autonomous-feature-development`; the engine owns every
+stage. Mirrors the `/grill-me` → `/grilling` delegation pattern, with the one
+addition that the engine reads a flag.
+
+**The `interaction_mode` flag** (`autonomous` default | `human-in-loop`) is
+distinct from Mode A / Mode B pipeline selection. The orchestrator branches on it at
+**exactly three junctures**; everywhere else is shared. **Subagents never branch on
+it** — they receive concrete inputs (resolved commands, `mcp_available`) and stay
+autonomous.
+
+| Juncture | `autonomous` | `human-in-loop` |
+| -------- | ------------ | --------------- |
+| Stage 0 — unresolved required command (`lint`/`test`) | Hard-stop listing the unresolved names | Ask the user, persist to a `## Commands` section in `CLAUDE.md`, continue |
+| Stage 2 — UI acceptance criterion needs Playwright MCP but it is absent | Hard-stop (preflight AC-scan + per-AC backstop) | Verifier auto-verifies non-UI ACs and returns `needs_human`; orchestrator writes `.loop-logs/<id>/verifications/verification-<round>.md`, pauses, then folds the human's results back into the fix loop |
+| Stage 4 — commit | `git add -A` + commit (or `wip:` partial), then branch completion | Never commit — `git reset --mixed <base_sha>` leaves everything unstaged; skip branch completion; prompt the human |
+
+Command resolution and the commit handoff apply to both Mode A and Mode B; the
+Stage 0 MCP AC-scan is Mode A only (Mode B has no `spec_path`), though the
+verify-time per-AC MCP backstop still applies.
+
+**File structure:**
+
+| File       | Purpose                                                        |
+| ---------- | ------------------------------------------------------------- |
+| `SKILL.md` | Clarify/pause contract + invoke the engine with `interaction_mode = human-in-loop` |
 
 ---
 
