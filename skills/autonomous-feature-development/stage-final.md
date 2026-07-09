@@ -43,26 +43,40 @@ Write `.loop-logs/<id>/logs/summary.md`:
 <list each deferred minor from the final review round, or "none">
 ```
 
-## Step 4.3 — Commit
+## Step 4.3 — Commit or hand off
 
-Stage everything: `git add -A`
+**`interaction_mode == autonomous`:** stage everything (`git add -A`) and commit.
 
-**If all tasks completed successfully:**
+- All tasks completed: `git commit -m "feat(<scope>): <description from plan Goal line>"`
+- Any task failed (partial):
+  ```bash
+  git commit -m "wip: partial — <completed>/<total> tasks completed
+
+  Failed tasks:
+  <task-id-1>: see .loop-logs/<id>/error/<task-id-1>.md"
+  ```
+Then proceed to Step 4.4.
+
+**`interaction_mode == human-in-loop`:** do NOT commit. Collapse the run's commits
+into unstaged working-tree changes for the human to review:
 
 ```bash
-git commit -m "feat(<scope>): <description derived from plan Goal line>"
+git reset --mixed <base_sha>
 ```
 
-**If any tasks failed (partial):**
+Confirm `git status` shows unstaged changes and `git log` shows no new commits since
+`<base_sha>`. **Skip Step 4.4.** Print:
 
-```bash
-git commit -m "wip: partial — <completed>/<total> tasks completed
-
-Failed tasks:
-<task-id-1>: see .loop-logs/<id>/error/<task-id-1>.md"
 ```
+Implementation complete. All changes are unstaged on <branch> — review and commit manually.
+Summary: .loop-logs/<id>/logs/summary.md
+```
+
+Then stop.
 
 ## Step 4.4 — Branch completion
+
+Only runs when `interaction_mode == autonomous` (human-in-loop stopped at Step 4.3).
 
 Run `superpowers:finishing-a-development-branch`. If the `superpowers` plugin is
 not installed, stop here and tell the user to install it (see the plugin README) —

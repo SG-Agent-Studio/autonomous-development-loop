@@ -34,6 +34,9 @@ Run: `git rev-parse --abbrev-ref HEAD`
   - Run: `git checkout -b <branch-name>`
 - Otherwise: continue on current branch.
 
+Record `base_sha` = output of `git rev-parse HEAD` — the branch tip before any task
+work. Used by the human-in-loop commit handoff (`stage-final.md` Step 4.3).
+
 ### Step 0.4 — Parse tasks
 
 Read `plan_path`. Extract every heading matching `### Task N: <name>` (N = a number). For each match:
@@ -313,14 +316,27 @@ Wait for all worktree agents to complete (success or hard-stop).
 ```bash
 git merge --squash worktree/<task-id>
 git commit -m "feat(<scope>): <task description>"
-git worktree remove .worktrees/<task-id> --force
-git branch -D worktree/<task-id>
 ```
 
-**For each task with `"status": "failed"`:**
+**For each task with `"status": "failed"`:** do NOT merge. Log in
+`.loop-logs/<id>/logs/summary.md`: `FAILED: <task-id> — see .loop-logs/<id>/error/<task-id>.md`.
 
-- Do NOT merge its worktree.
-- Log in `.loop-logs/<id>/logs/summary.md`: `FAILED: <task-id> — see .loop-logs/<id>/error/<task-id>.md`
+### Final worktree sweep (mandatory — both interaction modes)
+
+After all merges, remove **every** worktree (completed and failed — failed work is
+already captured in its error log):
+
+```bash
+for wt in $(git worktree list --porcelain | awk '/^worktree/ {print $2}' | grep '/.worktrees/'); do
+  git worktree remove --force "$wt"
+done
+git worktree prune
+git branch --list 'worktree/*' | xargs -r git branch -D
+rmdir .worktrees 2>/dev/null || true
+```
+
+**Gate:** `git worktree list` shows no path under `.worktrees/`, and `.worktrees/`
+is gone. If any remain, STOP and print which worktree could not be removed.
 
 **After all merges**, verify the history is linear:
 
