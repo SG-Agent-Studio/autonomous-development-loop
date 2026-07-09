@@ -13,10 +13,15 @@ Spawn a **verifier subagent** (single responsibility). It:
    has no `spec_path`** — there the verifier instead exercises the changed paths for
    regressions only (boot succeeds and the changed endpoints/paths still work), with
    no spec-acceptance match.
-3. Returns:
+3. Returns the schema below.
+
+The verifier receives `mcp_available`. For each AC: if it needs the browser and
+`mcp_available == n`, do **not** attempt it — in `autonomous` mark it
+`CANNOT-VERIFY` (→ overall fail); in `human-in-loop` add it to `needs_human` and do
+not fail on it. Verify every other AC normally (curl / DB / logs / files / browser).
 
 ```json
-{ "outcome": "pass" | "fail", "failures": ["<root-cause summary>", ...] }
+{ "outcome": "pass" | "fail" | "needs_human", "failures": ["<root cause>", ...], "needs_human": ["<AC text>", ...] }
 ```
 
 After each verify (pass or fail), the orchestrator writes
@@ -28,6 +33,33 @@ After each verify (pass or fail), the orchestrator writes
 
 **If `outcome == "pass"`:** return to the loop — proceed to the REVIEW step in
 `./stage-review-fix.md`.
+
+**If `outcome == "needs_human"` (human-in-loop only):**
+
+1. The orchestrator writes `.loop-logs/<id>/verifications/verification-<round>.md`
+   (`<round>` = verify-round counter, incremented per verify):
+
+   ```markdown
+   # Verification Checklist — Round <round>
+
+   **Spec:** <spec_path>
+   **How to run:** `<start_cmd>` — wait for the ready signal, then verify each item.
+
+   ## Auto-verified (reference)
+   - [PASS|FAIL] <AC> — <evidence>
+
+   ## Needs your verification
+   - [ ] <AC text>
+     - How to check: <smallest action>
+     - Where to observe: <URL / screen / log>
+     - Result: (pass / fail + notes)
+   ```
+
+2. Prompt the human: `Verification checklist ready at <path>. Verify each item and
+   reply pass/fail + notes.` Then **end the turn** (the orchestrator pauses here).
+3. On the human's reply, combine their per-item results with the auto-verified
+   results. **Any FAIL** → treat as `outcome == "fail"` and run "Fix on failure"
+   below. **All PASS** → proceed to the REVIEW step.
 
 ## Fix on failure (≤3 inner rounds)
 

@@ -12,7 +12,7 @@ If AC are unclear or unmeasurable → return `CANNOT-VERIFY` with the ambiguity 
 
 ### 2. Start the system; wait until ready
 
-Use the project's documented start command (e.g., `just up-capstone`, `docker compose up`, `npm run dev`). Confirm:
+Use the project's documented start command (the resolved `<start_cmd>` — e.g. `docker compose up`, `npm run dev`). Confirm:
 
 - All depended-on services are healthy (DB, Phoenix, etc.)
 - The application has logged its "ready" / "listening on port X" indicator

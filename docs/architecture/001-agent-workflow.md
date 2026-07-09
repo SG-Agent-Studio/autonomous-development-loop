@@ -156,7 +156,7 @@ flowchart TD
     PH3 --> PH4[Phase 4: enhanced-review agent\nreview code]
     PH4 --> PH4OK{code\napproved?}
     PH4OK -->|no| PH3
-    PH4OK -->|yes| PH5[Phase 5: Implementer agent\nverify: just lint + just test-unit]
+    PH4OK -->|yes| PH5[Phase 5: Implementer agent\nverify: lint_cmd + test_cmd]
     PH5 --> SMF[squash merge fix\ninto branch]
 
     FI2 -.->|same phases| SMF
@@ -172,7 +172,7 @@ summary as deferred ("not handled yet"); they are never fixed in-loop.
 
 ```mermaid
 flowchart TD
-    S4([Stage 4: Final]) --> LF[just lint\njust format]
+    S4([Stage 4: Final]) --> LF[lint_cmd\nformat_cmd]
     LF --> LFR{both\nexit 0?}
     LFR -->|no| FIX[fix and rerun]
     FIX --> LF

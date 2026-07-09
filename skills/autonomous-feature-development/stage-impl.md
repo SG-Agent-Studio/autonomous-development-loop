@@ -34,6 +34,9 @@ Run: `git rev-parse --abbrev-ref HEAD`
   - Run: `git checkout -b <branch-name>`
 - Otherwise: continue on current branch.
 
+Record `base_sha` = output of `git rev-parse HEAD` — the branch tip before any task
+work. Used by the human-in-loop commit handoff (`stage-final.md` Step 4.3).
+
 ### Step 0.4 — Parse tasks
 
 Read `plan_path`. Extract every heading matching `### Task N: <name>` (N = a number). For each match:
@@ -69,6 +72,59 @@ Setup complete. Found <N> tasks:
   ...
 Working branch: <current-branch>
 ```
+
+### Step 0.6 — Resolve project commands
+
+The pipeline needs four commands. Resolve each **once** here; never hardcode a tool.
+
+| Variable       | Purpose         | Required                        |
+| -------------- | --------------- | ------------------------------- |
+| `<lint_cmd>`   | lint            | yes                             |
+| `<test_cmd>`   | unit tests      | yes                             |
+| `<format_cmd>` | format          | no (skip step if unresolved)    |
+| `<start_cmd>`  | boot the system | no (only for Tier-3/UI verify)  |
+
+Resolve in precedence order:
+
+1. A `## Commands` section in `CLAUDE.md` or `AGENTS.md`:
+
+   ```markdown
+   ## Commands
+   - Lint: `<cmd>`
+   - Test: `<cmd>`
+   - Format: `<cmd>`
+   - Start: `<cmd>`
+   ```
+
+2. Project config — `justfile`, `package.json` scripts, `Makefile`,
+   `pyproject.toml`/uv, etc. (e.g. `package.json` `"scripts": { "lint": ... }` → `pnpm lint`).
+
+If a **required** command (`lint`, `test`) is still unresolved:
+
+- `interaction_mode == autonomous`: **hard-stop**. Print
+  `ERROR: unresolved required command(s): <names>. Add a "## Commands" section to CLAUDE.md/AGENTS.md.` and stop.
+- `interaction_mode == human-in-loop`: ask the user for each unresolved command,
+  write the answers into a `## Commands` section in `CLAUDE.md` (create it if
+  absent), then continue.
+
+Inject the resolved commands into **every subagent prompt** (alongside `LOG_PATH`),
+so agents never re-discover. Do **not** write config-discovered commands back to
+memory — only asked answers are persisted.
+
+### Step 0.7 — Probe verification capability (Mode A)
+
+Check whether the bundled Playwright MCP tools are available → `mcp_available`
+(y/n). Scan `spec_path` acceptance criteria for browser-observable behavior
+(rendered pages, UI state, client-side interaction).
+
+- A UI AC is present AND `mcp_available == n`:
+  - `interaction_mode == autonomous`: **hard-stop**. Print
+    `ERROR: UI acceptance criteria require Playwright MCP, which is unavailable.` and stop.
+  - `interaction_mode == human-in-loop`: print a heads-up that UI verification will
+    be handed to the human via a checklist, and continue.
+
+Record `mcp_available` and inject it into the verifier subagent prompt. Mode B has
+no `spec_path` — skip the AC-scan; the verify-time per-AC backstop below still applies.
 
 ---
 
@@ -180,9 +236,9 @@ Write the **Task Header** (Tier 1 from `log-schema.md`) to `LOG_PATH` now, befor
 
 1. Write the failing test first. Run it and confirm it fails with the expected reason.
 2. Write the minimal implementation to make it pass.
-3. Run verifiable signals in order:
-   - `just lint` — must exit 0
-   - `just test-unit` — must exit 0
+3. Run verifiable signals in order (`<lint_cmd>`/`<test_cmd>` = the commands injected by the orchestrator in Step 0.6):
+   - `<lint_cmd>` — must exit 0
+   - `<test_cmd>` — must exit 0
 
 **On pass (both green):**
 
@@ -234,8 +290,8 @@ Write `ERROR_LOG_PATH`:
 ## Reproduction
 
 cd <worktree path>
-just lint
-just test-unit
+<lint_cmd>
+<test_cmd>
 ```
 
 Update task JSON: `"status": "failed"`.
@@ -260,14 +316,27 @@ Wait for all worktree agents to complete (success or hard-stop).
 ```bash
 git merge --squash worktree/<task-id>
 git commit -m "feat(<scope>): <task description>"
-git worktree remove .worktrees/<task-id> --force
-git branch -D worktree/<task-id>
 ```
 
-**For each task with `"status": "failed"`:**
+**For each task with `"status": "failed"`:** do NOT merge. Log in
+`.loop-logs/<id>/logs/summary.md`: `FAILED: <task-id> — see .loop-logs/<id>/error/<task-id>.md`.
 
-- Do NOT merge its worktree.
-- Log in `.loop-logs/<id>/logs/summary.md`: `FAILED: <task-id> — see .loop-logs/<id>/error/<task-id>.md`
+### Final worktree sweep (mandatory — both interaction modes)
+
+After all merges, remove **every** worktree (completed and failed — failed work is
+already captured in its error log):
+
+```bash
+for wt in $(git worktree list --porcelain | awk '/^worktree/ {print $2}' | grep '/.worktrees/'); do
+  git worktree remove --force "$wt"
+done
+git worktree prune
+git branch --list 'worktree/*' | xargs -r git branch -D
+rmdir .worktrees 2>/dev/null || true
+```
+
+**Gate:** `git worktree list` shows no path under `.worktrees/`, and `.worktrees/`
+is gone. If any remain, STOP and print which worktree could not be removed.
 
 **After all merges**, verify the history is linear:
 

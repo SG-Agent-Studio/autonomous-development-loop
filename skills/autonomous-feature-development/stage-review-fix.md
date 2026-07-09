@@ -133,11 +133,11 @@ fix is never the agent that reviews it:
 - **Phase 2 — Review plan** (enhanced-review agent): if issues → back to Phase 1 with
   feedback; repeat until approved.
 - **Phase 3 — Implement** (Implementer agent): TDD — write failing test, confirm it
-  fails for the expected reason, write minimal implementation, then `just lint` and
-  `just test-unit` both exit 0. Commit `fix(<scope>): <issue description>`.
+  fails for the expected reason, write minimal implementation, then `<lint_cmd>` and
+  `<test_cmd>` both exit 0. Commit `fix(<scope>): <issue description>`.
 - **Phase 4 — Review implementation** (enhanced-review agent): review the code change;
   if issues → back to Phase 3; repeat until approved.
-- **Phase 5 — Verify** (Implementer agent): `just lint` + `just test-unit` one final
+- **Phase 5 — Verify** (Implementer agent): `<lint_cmd>` + `<test_cmd>` one final
   time; mark resolved. The orchestrator never runs lint/test itself.
 
 ### Squash-merge each fix (orchestrator)
