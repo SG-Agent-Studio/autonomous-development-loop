@@ -25,14 +25,21 @@ LOOP:
   iteration += 1
   1. VERIFY  — run the VERIFY step in ./stage-verify.md. If verify hard-stops after 3
      inner rounds, the pipeline already stopped (verification-failure.md committed).
-  2. REVIEW  — run Part 1: spawn reviewers + consolidator, then write
-     .loop-logs/<id>/code-review/round-<iteration>.md.
+  1a. PAUSE CHECK — if verify handed off to the human (verification-state.json
+     last_outcome == "awaiting_human"): STOP. Do NOT run REVIEW. End the turn.
+     Resume at "Resume after human verification" in ./stage-verify.md, which
+     re-enters this iteration without incrementing `iteration`.
+  2. REVIEW  — run the Stage 2 Clearance Gate below, then Part 1: spawn reviewers +
+     consolidator, then write .loop-logs/<id>/code-review/round-<iteration>.md.
   3. If actionable count == 0:  exit LOOP → "After the Loop".
   4. If iteration == 5:  cap reached → write .loop-logs/<id>/error/review-loop-exhausted.md,
      commit wip:, exit LOOP → "After the Loop".
   5. Otherwise: run Part 2 (fix each actionable issue), squash-merge fixes, then GOTO
      LOOP (re-verify before the next review).
 ```
+
+A pause does not consume an iteration. `iteration` increments only at the top of LOOP.
+The ≤5 cap therefore counts review rounds, not human round-trips.
 
 `actionable = issues tagged blocking OR important`. Minor issues never count toward the
 loop and are never fixed in-loop; they are recorded in Part 1 and surfaced in the final
@@ -60,6 +67,31 @@ work, with no spec-acceptance match.
 ---
 
 ## Part 1: Review (one iteration)
+
+### Stage 2 Clearance Gate
+
+**This check is mandatory. Do not spawn any reviewer until it passes.**
+
+Read `.loop-logs/<id>/tasks/verification-state.json`.
+
+**Proceed only if `last_outcome == "pass"`.** Any other value — and a missing or
+unwritten file — halts the pipeline. The gate requires positive confirmation rather
+than merely forbidding `awaiting_human`, so a silently-skipped verify is caught too.
+
+If the gate does not pass, print exactly:
+
+```
+STOP — Stage 2 Clearance Gate failed.
+
+verification-state.json last_outcome = <value, or "file missing">
+Expected: "pass"
+
+Stage 2 is not cleared. Reviewers were NOT spawned.
+If last_outcome is "awaiting_human", the run is waiting on the checklist at
+<checklist_path> — resume at "Resume after human verification" in ./stage-verify.md.
+```
+
+Then end the turn. Do not advance to Stage 3 or Stage 4.
 
 ### Spawn fresh reviewers
 
