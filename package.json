@@ -5,7 +5,9 @@
   "scripts": {
     "version:bump": "node scripts/version/bump-version.js",
     "version:check": "node scripts/version/check-version.js",
-    "verify:stage2": "node scripts/verify/check-stage2-gate.js"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "verify:stage2": "vitest run tests/regression-tests/check-stage2-gate.test.ts"
   },
   "license": "MIT",
   "type": "module",
@@ -15,5 +17,10 @@
       "version": "^11.1.3",
       "onFail": "download"
     }
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }

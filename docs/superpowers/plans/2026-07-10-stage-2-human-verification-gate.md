@@ -6,7 +6,7 @@
 
 **Architecture:** Split fact-reporting from policy. The verifier subagent becomes mode-blind and returns a `blocked[]` list of acceptance criteria it lacked the capability to check; the orchestrator alone maps that onto mode policy. The pause is then enforced by a durable state file plus a fail-closed **Stage 2 Clearance Gate** that refuses to spawn reviewers unless `last_outcome == "pass"` — converting an instruction the model can rationalize past into a file read it cannot.
 
-**Tech Stack:** Markdown skill definitions (the product), Node 20+ ESM (the verification harness), pnpm.
+**Tech Stack:** Markdown skill definitions (the product), TypeScript + vitest on Node 20+ (the verification harness), pnpm.
 
 ## Global Constraints
 
@@ -25,8 +25,9 @@ Copied verbatim from `docs/superpowers/specs/2026-07-10-stage-2-human-verificati
 
 | File | Responsibility | Action |
 | --- | --- | --- |
-| `scripts/verify/check-stage2-gate.js` | The test harness. Encodes all 13 static assertions from the spec; `--only=A1,A2` runs a subset. | Create |
-| `package.json` | Expose the harness as `pnpm verify:stage2`. | Modify |
+| `tests/regression-tests/check-stage2-gate.test.ts` | The test harness. Encodes all 13 static assertions from the spec as vitest `it()` blocks; `-t "A1:|A2:"` runs a subset. | Create |
+| `tsconfig.json` | Strict `noEmit` config so `pnpm typecheck` actually checks the harness. | Create |
+| `package.json` | vitest/typescript devDeps; expose the harness as `pnpm verify:stage2`. | Modify |
 | `skills/autonomous-feature-development/stage-verify.md` | Verifier contract (mode-blind), orchestrator translation table, state schema, checklist template, STOP block, resume procedure. | Rewrite |
 | `skills/autonomous-feature-development/stage-review-fix.md` | Loop Control step `1a`; Stage 2 Clearance Gate. | Modify |
 | `skills/autonomous-feature-development/stage-impl.md` | File-ownership table gains a `verifications/` row. | Modify |
@@ -63,19 +64,27 @@ Copied verbatim from `docs/superpowers/specs/2026-07-10-stage-2-human-verificati
 ### Task 1: Static assertion harness
 
 **Files:**
-- Create: `scripts/verify/check-stage2-gate.js`
+- Create: `tests/regression-tests/check-stage2-gate.test.ts`
+- Create: `tsconfig.json`
 - Modify: `package.json`
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: CLI `node scripts/verify/check-stage2-gate.js [--only=A1,A2,...]`. Prints one `PASS`/`FAIL` line per assertion, exits `0` only if every selected assertion passes. Every later task runs this.
+- Produces: `pnpm verify:stage2`, a vitest suite of 13 `it()` blocks named `A1:`…`A13:`.
+  Exits `0` only if every assertion passes. `-t "A3:|A4:"` runs a subset. Every later
+  task runs this.
 
-- [ ] **Step 1: Write the failing test (the harness itself)**
+- [ ] **Step 1: Add the dev dependencies**
 
-Create `scripts/verify/check-stage2-gate.js`:
+```bash
+pnpm add -D vitest typescript @types/node
+```
 
-```js
-#!/usr/bin/env node
+- [ ] **Step 2: Write the failing test (the harness itself)**
+
+Create `tests/regression-tests/check-stage2-gate.test.ts`:
+
+```ts
 /**
  * Static assertions for the Stage 2 human verification gate.
  * Spec: docs/superpowers/specs/2026-07-10-stage-2-human-verification-gate-design.md
@@ -84,6 +93,12 @@ Create `scripts/verify/check-stage2-gate.js`:
  * fail when a stage file drifts back to the pre-fix contract.
  */
 import { readFileSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, it, expect } from "vitest";
+
+/** Repo root, so the assertions hold regardless of the caller's cwd. */
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 const AFD = "skills/autonomous-feature-development";
 const HIL = "skills/human-in-loop-feature-development/SKILL.md";
@@ -98,11 +113,22 @@ const FINAL = `${AFD}/stage-final.md`;
 const CONTRACT_HEADING = "## Verifier subagent contract (mode-blind)";
 const RESUME_HEADING = "## Resume after human verification";
 
-const read = (p) => (existsSync(p) ? readFileSync(p, "utf8") : "");
+const ALL_SKILL_DOCS = [VERIFY, REVIEW_FIX, IMPL, ENGINE, FINAL, HIL, ARCH];
+
+/**
+ * Reads a repo-relative path. A missing file is a bug in this harness, not a
+ * passing assertion: several checks assert a string is *absent*, and an empty
+ * string satisfies all of them vacuously.
+ */
+function read(relPath: string): string {
+  const abs = join(ROOT, relPath);
+  if (!existsSync(abs)) throw new Error(`harness target missing: ${relPath}`);
+  return readFileSync(abs, "utf8");
+}
 
 /** Body of `heading`, up to the next heading of the same or higher level. */
-function section(text, heading) {
-  const level = heading.match(/^#+/)[0].length;
+function section(text: string, heading: string): string {
+  const level = heading.match(/^#+/)![0].length;
   const start = text.indexOf(heading);
   if (start === -1) return "";
   const rest = text.slice(start + heading.length);
@@ -110,168 +136,131 @@ function section(text, heading) {
   return next === -1 ? rest : rest.slice(0, next);
 }
 
-const ALL_SKILL_DOCS = [VERIFY, REVIEW_FIX, IMPL, ENGINE, FINAL, HIL, ARCH];
-
-/** Each check returns `true` on pass, or a string explaining the failure. */
-const checks = [
-  {
-    id: "A1",
-    desc: "`needs_human` is gone from skills/ and docs/architecture/",
-    fn: () => {
-      const hits = ALL_SKILL_DOCS.filter((f) => read(f).includes("needs_human"));
-      return hits.length === 0 || `still present in: ${hits.join(", ")}`;
-    },
-  },
-  {
-    id: "A2",
-    desc: "verifier contract section is mode-blind",
-    fn: () => {
-      const s = section(read(VERIFY), CONTRACT_HEADING);
-      if (!s) return `missing heading: ${CONTRACT_HEADING}`;
-      const banned = ["interaction_mode", "human-in-loop"].filter((w) => s.includes(w));
-      return banned.length === 0 || `verifier section mentions: ${banned.join(", ")}`;
-    },
-  },
-  {
-    id: "A3",
-    desc: "Loop Control has the 1a pause branch keyed on awaiting_human",
-    fn: () => {
-      const s = read(REVIEW_FIX);
-      if (!s.includes("awaiting_human")) return "stage-review-fix.md never mentions awaiting_human";
-      if (!/^\s*1a\./m.test(s)) return "no Loop Control step `1a.`";
-      return true;
-    },
-  },
-  {
-    id: "A4",
-    desc: 'Stage 2 Clearance Gate gates on last_outcome == "pass"',
-    fn: () => {
-      const s = read(REVIEW_FIX);
-      if (!s.includes("Stage 2 Clearance Gate")) return "gate heading absent";
-      if (!s.includes('last_outcome == "pass"')) return "gate does not require last_outcome == \"pass\"";
-      return true;
-    },
-  },
-  {
-    id: "A5",
-    desc: "no stale two-value last_outcome enum; new enum defined exactly once",
-    fn: () => {
-      // The three-value enum contains the two-value one as a prefix, so the
-      // stale-enum probe must assert the absence of the third value.
-      const stale = /"last_outcome":\s*"pass"\s*\|\s*"fail"(?!\s*\|\s*"awaiting_human")/;
-      const hits = ALL_SKILL_DOCS.filter((f) => stale.test(read(f)));
-      if (hits.length) return `stale two-value enum in: ${hits.join(", ")}`;
-      const fresh = '"last_outcome": "pass" | "fail" | "awaiting_human"';
-      const defs = ALL_SKILL_DOCS.filter((f) => read(f).includes(fresh));
-      if (defs.length === 0) return "three-value enum defined nowhere";
-      if (defs.length > 1) return `enum defined in ${defs.length} files, expected 1: ${defs.join(", ")}`;
-      if (defs[0] !== VERIFY) return `enum must be defined in ${VERIFY}, found in ${defs[0]}`;
-      return true;
-    },
-  },
-  {
-    id: "A6",
-    desc: "resume section exists and the state file's `resume` pointer names it exactly",
-    fn: () => {
-      const s = read(VERIFY);
-      if (!s.includes(RESUME_HEADING)) return `missing heading: ${RESUME_HEADING}`;
-      const m = s.match(/"resume":\s*"([^"]+)"/);
-      if (!m) return "state schema has no `resume` pointer";
-      const target = RESUME_HEADING.replace(/^#+\s*/, "");
-      return m[1].includes(target) || `resume pointer does not name "${target}": ${m[1]}`;
-    },
-  },
-  {
-    id: "A7",
-    desc: "engine SKILL.md still states the subagent rule",
-    fn: () =>
-      read(ENGINE).includes("Subagents never branch on") ||
-      "SKILL.md no longer states the subagent rule",
-  },
-  {
-    id: "A8",
-    desc: "architecture doc describes the awaiting_human pause",
-    fn: () => read(ARCH).includes("awaiting_human") || "002-skills.md never mentions awaiting_human",
-  },
-  {
-    id: "A9",
-    desc: "verifier schema has blocked / how_to_check / where_to_observe",
-    fn: () => {
-      const s = section(read(VERIFY), CONTRACT_HEADING);
-      const missing = ["blocked", "how_to_check", "where_to_observe"].filter((w) => !s.includes(w));
-      return missing.length === 0 || `verifier schema missing: ${missing.join(", ")}`;
-    },
-  },
-  {
-    id: "A10",
-    desc: "blocked vs CANNOT-VERIFY disambiguation table is present",
-    fn: () => {
-      const s = section(read(VERIFY), CONTRACT_HEADING);
-      const missing = ["System failed to start", "AC unclear or unmeasurable"].filter(
-        (w) => !s.includes(w),
-      );
-      return missing.length === 0 || `disambiguation table missing rows: ${missing.join(", ")}`;
-    },
-  },
-  {
-    id: "A11",
-    desc: "checklist uses `Result: (pending)` and carries no redundant checkbox",
-    fn: () => {
-      const s = read(VERIFY);
-      if (!s.includes("Result: (pending)")) return "checklist template lacks `Result: (pending)`";
-      if (s.includes("- [ ] <AC text>")) return "checklist still has a redundant `- [ ]` checkbox";
-      return true;
-    },
-  },
-  {
-    id: "A12",
-    desc: "stage-impl.md ownership table lists the verifications/ directory",
-    fn: () =>
-      read(IMPL).includes("verifications/") || "file-ownership table has no verifications/ row",
-  },
-  {
-    id: "A13",
-    desc: "HIL SKILL.md names the checklist file and the `continue` resume signal",
-    fn: () => {
-      const s = read(HIL);
-      const missing = ["verification-<round>.md", "`continue`"].filter((w) => !s.includes(w));
-      return missing.length === 0 || `HIL SKILL.md missing: ${missing.join(", ")}`;
-    },
-  },
-];
-
-const only = process.argv
-  .find((a) => a.startsWith("--only="))
-  ?.slice("--only=".length)
-  .split(",")
-  .map((s) => s.trim());
-
-const selected = only ? checks.filter((c) => only.includes(c.id)) : checks;
-
-if (only) {
-  const unknown = only.filter((id) => !checks.some((c) => c.id === id));
-  if (unknown.length) {
-    console.error(`unknown assertion id(s): ${unknown.join(", ")}`);
-    process.exit(2);
-  }
+/** The verifier contract section, which several assertions scope themselves to. */
+function contractSection(): string {
+  const s = section(read(VERIFY), CONTRACT_HEADING);
+  expect(s, `missing heading: ${CONTRACT_HEADING}`).not.toBe("");
+  return s;
 }
 
-let failed = 0;
-for (const { id, desc, fn } of selected) {
-  const result = fn();
-  if (result === true) {
-    console.log(`PASS ${id}  ${desc}`);
-  } else {
-    failed++;
-    console.log(`FAIL ${id}  ${desc}\n       ↳ ${result}`);
-  }
-}
+const docsContaining = (needle: string) => ALL_SKILL_DOCS.filter((f) => read(f).includes(needle));
 
-console.log(`\n${selected.length - failed}/${selected.length} assertions passed`);
-process.exit(failed === 0 ? 0 : 1);
+describe("stage 2 human verification gate", () => {
+  it("A1: `needs_human` is gone from skills/ and docs/architecture/", () => {
+    expect(docsContaining("needs_human")).toEqual([]);
+  });
+
+  it("A2: verifier contract section is mode-blind", () => {
+    const s = contractSection();
+    const banned = ["interaction_mode", "human-in-loop"].filter((w) => s.includes(w));
+    expect(banned, "verifier contract must not mention the orchestrator's mode").toEqual([]);
+  });
+
+  it("A3: Loop Control has the 1a pause branch keyed on awaiting_human", () => {
+    const s = read(REVIEW_FIX);
+    expect(s, "stage-review-fix.md never mentions awaiting_human").toContain("awaiting_human");
+    expect(s, "no Loop Control step `1a.`").toMatch(/^\s*1a\./m);
+  });
+
+  it('A4: Stage 2 Clearance Gate gates on last_outcome == "pass"', () => {
+    const s = read(REVIEW_FIX);
+    expect(s, "gate heading absent").toContain("Stage 2 Clearance Gate");
+    expect(s, "gate does not require a positive pass").toContain('last_outcome == "pass"');
+  });
+
+  it("A5: no stale two-value last_outcome enum; new enum defined exactly once", () => {
+    // The three-value enum contains the two-value one as a prefix, so the
+    // stale-enum probe must assert the absence of the third value.
+    const stale = /"last_outcome":\s*"pass"\s*\|\s*"fail"(?!\s*\|\s*"awaiting_human")/;
+    expect(ALL_SKILL_DOCS.filter((f) => stale.test(read(f))), "stale two-value enum").toEqual([]);
+
+    const fresh = '"last_outcome": "pass" | "fail" | "awaiting_human"';
+    expect(docsContaining(fresh), "enum must be defined exactly once, in stage-verify.md").toEqual([
+      VERIFY,
+    ]);
+  });
+
+  it("A6: resume section exists and the state file's `resume` pointer names it exactly", () => {
+    const s = read(VERIFY);
+    expect(s, `missing heading: ${RESUME_HEADING}`).toContain(RESUME_HEADING);
+
+    const m = s.match(/"resume":\s*"([^"]+)"/);
+    expect(m, "state schema has no `resume` pointer").not.toBeNull();
+    expect(m![1], "resume pointer must name the resume heading").toContain(
+      RESUME_HEADING.replace(/^#+\s*/, ""),
+    );
+  });
+
+  it("A7: engine SKILL.md still states the subagent rule", () => {
+    expect(read(ENGINE)).toContain("Subagents never branch on");
+  });
+
+  it("A8: architecture doc describes the awaiting_human pause", () => {
+    expect(read(ARCH)).toContain("awaiting_human");
+  });
+
+  it("A9: verifier schema has blocked / how_to_check / where_to_observe", () => {
+    const s = contractSection();
+    const missing = ["blocked", "how_to_check", "where_to_observe"].filter((w) => !s.includes(w));
+    expect(missing, "verifier schema fields").toEqual([]);
+  });
+
+  it("A10: blocked vs CANNOT-VERIFY disambiguation table is present", () => {
+    const s = contractSection();
+    const missing = ["System failed to start", "AC unclear or unmeasurable"].filter(
+      (w) => !s.includes(w),
+    );
+    expect(missing, "disambiguation table rows").toEqual([]);
+  });
+
+  it("A11: checklist uses `Result: (pending)` and carries no redundant checkbox", () => {
+    const s = read(VERIFY);
+    expect(s, "checklist template lacks `Result: (pending)`").toContain("Result: (pending)");
+    expect(s, "checklist still has a redundant `- [ ]` checkbox").not.toContain("- [ ] <AC text>");
+  });
+
+  it("A12: stage-impl.md ownership table lists the verifications/ directory", () => {
+    expect(read(IMPL)).toContain("verifications/");
+  });
+
+  it("A13: HIL SKILL.md names the checklist file and the `continue` resume signal", () => {
+    const s = read(HIL);
+    const missing = ["verification-<round>.md", "`continue`"].filter((w) => !s.includes(w));
+    expect(missing, "HIL SKILL.md references").toEqual([]);
+  });
+});
 ```
 
-- [ ] **Step 2: Register the harness in `package.json`**
+Two decisions worth stating. `read()` **throws** on a missing file rather than
+returning `""`: several assertions check that a string is *absent*, and an empty
+string satisfies all of them vacuously — a harness that silently passes because it
+opened nothing is worse than no harness. And `ROOT` is derived from `import.meta.url`,
+not `cwd`, so the assertions mean the same thing wherever the suite is invoked from.
+
+- [ ] **Step 3: Create `tsconfig.json`**
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["tests/**/*.ts"]
+}
+```
+
+vitest strips types without checking them, so `typecheck` below is what makes the
+TypeScript load-bearing rather than decorative.
+
+- [ ] **Step 4: Register the harness in `package.json`**
 
 In `package.json`, replace the `scripts` block:
 
@@ -279,28 +268,42 @@ In `package.json`, replace the `scripts` block:
   "scripts": {
     "version:bump": "node scripts/version/bump-version.js",
     "version:check": "node scripts/version/check-version.js",
-    "verify:stage2": "node scripts/verify/check-stage2-gate.js"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "verify:stage2": "vitest run tests/regression-tests/check-stage2-gate.test.ts"
   },
 ```
 
-- [ ] **Step 3: Run the suite to verify it fails**
+- [ ] **Step 5: Run the suite to verify it fails**
 
 Run: `pnpm verify:stage2`
 
-Expected: exit code 1, `1/13 assertions passed`.
+Expected: exit code 1, `12 failed | 1 passed (13)`.
 
-- A5 fails with `stale two-value enum in: skills/autonomous-feature-development/stage-verify.md`.
-- A11 fails with `checklist still has a redundant `- [ ]` checkbox`.
-- A13 fails with ``HIL SKILL.md missing: `continue` `` — the checklist path is already named there; only the resume signal is absent.
-- A1, A2, A3, A4, A6, A8, A9, A10, A12 fail for the obvious reason (the thing does not exist yet).
-- **A7 passes.** The rule text is already in `SKILL.md`; it is merely *untrue* today, which is what Task 2 fixes. The harness cannot detect a lie, only an absence — this is the one assertion carrying real residual risk, and it is why A2 exists to check the behaviour the rule describes.
+- A5 fails on the stale two-value enum in `stage-verify.md`.
+- A11 fails: the checklist still has a redundant `- [ ]` checkbox.
+- A13 fails on the missing `` `continue` `` signal — the checklist path is already named
+  in the HIL skill; only the resume signal is absent.
+- A1, A2, A3, A4, A6, A8, A9, A10, A12 fail for the obvious reason (the thing does not
+  exist yet).
+- **A7 passes.** The rule text is already in `SKILL.md`; it is merely *untrue* today,
+  which is what Task 2 fixes. The harness cannot detect a lie, only an absence — this is
+  the one assertion carrying real residual risk, and it is why A2 exists to check the
+  behaviour the rule describes.
 
-If any of A1–A6 or A8–A13 *passes* at this point, the harness is wrong, not the skills. Stop and fix the harness.
+If any of A1–A6 or A8–A13 *passes* at this point, the harness is wrong, not the skills.
+Stop and fix the harness.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Confirm the harness typechecks**
+
+Run: `pnpm typecheck`
+
+Expected: exit 0, no output.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add scripts/verify/check-stage2-gate.js package.json
+git add tests/regression-tests/check-stage2-gate.test.ts tsconfig.json package.json pnpm-lock.yaml
 git commit -m "test(verify): add static assertion harness for stage 2 gate"
 ```
 
@@ -317,9 +320,9 @@ git commit -m "test(verify): add static assertion harness for stage 2 gate"
 
 - [ ] **Step 1: Run the assertions this task must turn green, and watch them fail**
 
-Run: `pnpm verify:stage2 --only=A1,A2,A5,A6,A9,A10,A11`
+Run: `pnpm verify:stage2 -t "A1:|A2:|A5:|A6:|A9:|A10:|A11:"`
 
-Expected: `0/7 assertions passed`, exit 1.
+Expected: `7 failed (7)`, exit 1.
 
 - [ ] **Step 2: Replace the entire contents of `skills/autonomous-feature-development/stage-verify.md`**
 
@@ -556,9 +559,9 @@ git commit -m "wip: verification failed after 3 rounds — see .loop-logs/<id>/e
 
 - [ ] **Step 3: Run the assertions to verify they pass**
 
-Run: `pnpm verify:stage2 --only=A1,A2,A5,A6,A9,A10,A11`
+Run: `pnpm verify:stage2 -t "A1:|A2:|A5:|A6:|A9:|A10:|A11:"`
 
-Expected: `7/7 assertions passed`, exit 0.
+Expected: `7 passed (7)`, exit 0.
 
 - [ ] **Step 4: Confirm nothing else regressed**
 
@@ -586,9 +589,9 @@ git commit -m "fix(autonomous-dev): make verifier mode-blind and define the stag
 
 - [ ] **Step 1: Run the assertions this task must turn green, and watch them fail**
 
-Run: `pnpm verify:stage2 --only=A3,A4`
+Run: `pnpm verify:stage2 -t "A3:|A4:"`
 
-Expected: `0/2 assertions passed`, exit 1.
+Expected: `2 failed (2)`, exit 1.
 
 - [ ] **Step 2: Replace the Loop Control block**
 
@@ -670,9 +673,9 @@ Then end the turn. Do not advance to Stage 3 or Stage 4.
 
 - [ ] **Step 4: Run the assertions to verify they pass**
 
-Run: `pnpm verify:stage2 --only=A3,A4`
+Run: `pnpm verify:stage2 -t "A3:|A4:"`
 
-Expected: `2/2 assertions passed`, exit 0.
+Expected: `2 passed (2)`, exit 0.
 
 - [ ] **Step 5: Commit**
 
@@ -695,9 +698,9 @@ git commit -m "fix(autonomous-dev): gate stage 3 review behind stage 2 clearance
 
 - [ ] **Step 1: Run the assertions this task must turn green**
 
-Run: `pnpm verify:stage2 --only=A7,A12`
+Run: `pnpm verify:stage2 -t "A7:|A12:"`
 
-Expected: A7 `PASS` (rule text already present), A12 `FAIL` with `file-ownership table has no verifications/ row`. Exit 1.
+Expected: A7 passes (rule text already present), A12 fails — the file-ownership table has no `verifications/` row. Exit 1.
 
 A7 is already green and this task must keep it that way. It guards the rule text that Task 2 made true.
 
@@ -755,9 +758,9 @@ with:
 
 - [ ] **Step 5: Run the assertions to verify they pass**
 
-Run: `pnpm verify:stage2 --only=A7,A12`
+Run: `pnpm verify:stage2 -t "A7:|A12:"`
 
-Expected: `2/2 assertions passed`, exit 0.
+Expected: `2 passed (2)`, exit 0.
 
 - [ ] **Step 6: Confirm the whole suite is now only missing the docs assertions**
 
@@ -786,9 +789,9 @@ git commit -m "fix(autonomous-dev): make the mode-blind subagent rule true acros
 
 - [ ] **Step 1: Run the assertions this task must turn green, and watch them fail**
 
-Run: `pnpm verify:stage2 --only=A8,A13`
+Run: `pnpm verify:stage2 -t "A8:|A13:"`
 
-Expected: `0/2 assertions passed`, exit 1.
+Expected: `2 failed (2)`, exit 1.
 
 - [ ] **Step 2: Rewrite juncture 2 in the wrapper skill**
 
@@ -836,15 +839,15 @@ stale, or `awaiting_human` state file halts the pipeline. The gate fails closed.
 
 - [ ] **Step 4: Run the assertions to verify they pass**
 
-Run: `pnpm verify:stage2 --only=A8,A13`
+Run: `pnpm verify:stage2 -t "A8:|A13:"`
 
-Expected: `2/2 assertions passed`, exit 0.
+Expected: `2 passed (2)`, exit 0.
 
 - [ ] **Step 5: Run the full suite**
 
 Run: `pnpm verify:stage2`
 
-Expected: `13/13 assertions passed`, exit 0.
+Expected: `13 passed (13)`, exit 0.
 
 - [ ] **Step 6: Commit**
 
@@ -914,7 +917,7 @@ Regression-guarded by `pnpm verify:stage2`.
 
 Run: `pnpm verify:stage2`
 
-Expected: `13/13 assertions passed`, exit 0.
+Expected: `13 passed (13)`, exit 0.
 
 - [ ] **Step 4: Confirm no stale contract survives anywhere in the repo**
 
@@ -946,7 +949,7 @@ git commit -m "docs: changelog and close bug 1 from the 2026-07-09 feedback"
 | §6 Resume after human verification | Task 2, Step 2 |
 | §7 Edge cases | Encoded in Task 2's resume/translate sections and Task 3's gate |
 | §Scope of change — all 8 files | Tasks 2–6 |
-| §Verification — 8 assertions | Task 1 (as 13 mechanical checks) |
+| §Verification — 8 assertions | Task 1 (as 13 vitest assertions) |
 | `verifying-implementation/**` not modified | No task touches it |
 
 No gaps.
