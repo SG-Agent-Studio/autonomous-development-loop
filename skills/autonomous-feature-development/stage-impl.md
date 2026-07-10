@@ -123,8 +123,11 @@ Check whether the bundled Playwright MCP tools are available → `mcp_available`
   - `interaction_mode == human-in-loop`: print a heads-up that UI verification will
     be handed to the human via a checklist, and continue.
 
-Record `mcp_available` and inject it into the verifier subagent prompt. Mode B has
-no `spec_path` — skip the AC-scan; the verify-time per-AC backstop below still applies.
+Record `mcp_available` and inject it into the verifier subagent prompt. It is the
+verifier's **only** capability input — never inject `interaction_mode` into any
+subagent. The verifier reports blocked criteria as facts; the orchestrator alone
+translates them into mode policy (see `stage-verify.md`). Mode B has no `spec_path` —
+skip the AC-scan; the verify-time per-AC backstop still applies.
 
 ---
 
@@ -138,7 +141,8 @@ File writes are split by owner:
 | `.loop-logs/<id>/logs/<task-id>.md`             | Agent (written directly, both Workflow and non-Workflow mode) | Incrementally — appended after each TDD attempt                          |
 | `.loop-logs/<id>/error/<task-id>.md`            | Agent (written directly, both Workflow and non-Workflow mode) | On hard stop (3 failures exhausted)                                      |
 | `.loop-logs/<id>/logs/summary.md`               | Orchestrator (Stage 4 only)                                   | Stage 4 only                                                             |
-| `.loop-logs/<id>/tasks/verification-state.json` | Orchestrator                                                  | After each verification round (Stage 2)                                  |
+| `.loop-logs/<id>/tasks/verification-state.json` | Orchestrator                                                  | After every verification round (Stage 2) — pass, fail, or `awaiting_human` |
+| `.loop-logs/<id>/verifications/verification-<round>.md` | Orchestrator (written), **human (edits `Result:` lines)** | On human handoff (Stage 2, `human-in-loop` only)                    |
 
 ### Task state lifecycle (orchestrator responsibility)
 
