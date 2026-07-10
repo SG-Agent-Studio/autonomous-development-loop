@@ -17,8 +17,15 @@ engine branches on `interaction_mode` at three orchestrator junctures:
 
 1. **Unresolved command** (Stage 0) — ask the user, persist to `CLAUDE.md`, continue.
 2. **Playwright MCP unavailable for a UI acceptance criterion** (Stage 2) — write a
-   checklist to `.loop-logs/<id>/verifications/verification-<round>.md`, pause, let
-   the human verify, and feed the results back into the fix loop.
+   checklist to `.loop-logs/<id>/verifications/verification-<round>.md`, set
+   `last_outcome: "awaiting_human"`, then **stop and end the turn**. Stage 3 is
+   blocked by the Stage 2 Clearance Gate until the human clears it.
+
+   The human fills in each `Result:` line (`PASS`, or `FAIL — <notes>`) **in that
+   file**, then replies `continue`. Chat carries only the go signal; the file carries
+   the results, so they survive context loss and stay auditable under `.loop-logs/`.
+   Any `FAIL` re-enters the fix loop; all `PASS` proceeds to review. Items left
+   `(pending)` keep the run paused.
 3. **Commit** (Stage 4) — never auto-commit. Leave all changes unstaged on the
    branch and prompt the human to review + commit.
 

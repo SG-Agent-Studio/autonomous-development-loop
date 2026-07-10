@@ -106,10 +106,17 @@ distinct from Mode A / Mode B pipeline selection. The orchestrator branches on i
 it** — they receive concrete inputs (resolved commands, `mcp_available`) and stay
 autonomous.
 
+**Stage 2 is gated, not merely instructed.** When the verifier reports `blocked`
+acceptance criteria it lacked the capability to check, `human-in-loop` writes a human
+checklist and records `last_outcome: "awaiting_human"` in
+`.loop-logs/<id>/tasks/verification-state.json`. The Stage 2 Clearance Gate at the top
+of the review step admits reviewers only when `last_outcome == "pass"`, so a missing,
+stale, or `awaiting_human` state file halts the pipeline. The gate fails closed.
+
 | Juncture | `autonomous` | `human-in-loop` |
 | -------- | ------------ | --------------- |
 | Stage 0 — unresolved required command (`lint`/`test`) | Hard-stop listing the unresolved names | Ask the user, persist to a `## Commands` section in `CLAUDE.md`, continue |
-| Stage 2 — UI acceptance criterion needs Playwright MCP but it is absent | Hard-stop (preflight AC-scan + per-AC backstop) | Verifier auto-verifies non-UI ACs and returns `needs_human`; orchestrator writes `.loop-logs/<id>/verifications/verification-<round>.md`, pauses, then folds the human's results back into the fix loop |
+| Stage 2 — UI acceptance criterion needs Playwright MCP but it is absent | Hard-stop (preflight AC-scan + per-AC backstop) | Verifier auto-verifies non-UI ACs and returns them as `blocked[]` facts; orchestrator writes `.loop-logs/<id>/verifications/verification-<round>.md`, sets `last_outcome: "awaiting_human"`, and **pauses**. The human records each `Result:` in that file and replies `continue`; the Stage 2 Clearance Gate blocks Stage 3 until then. Any `FAIL` folds back into the fix loop |
 | Stage 4 — commit | `git add -A` + commit (or `wip:` partial), then branch completion | Never commit — `git reset --mixed <base_sha>` leaves everything unstaged; skip branch completion; prompt the human |
 
 Command resolution and the commit handoff apply to both Mode A and Mode B; the

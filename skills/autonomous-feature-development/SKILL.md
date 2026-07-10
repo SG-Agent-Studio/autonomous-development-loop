@@ -50,7 +50,10 @@ human handoffs. It is distinct from the Mode A / Mode B pipeline selection above
 The orchestrator branches on `interaction_mode` at exactly three junctures:
 
 1. **Stage 0 preflight fallback** — an unresolved command or absent Playwright MCP.
-2. **Stage 2 verify fallback** — a UI acceptance criterion needs the browser but MCP is absent.
+2. **Stage 2 verify fallback** — the verifier reports `blocked` acceptance criteria
+   (browser needed, MCP absent). `autonomous` hard-stops; `human-in-loop` writes a
+   checklist, sets `last_outcome: "awaiting_human"`, and **pauses**. The Stage 2
+   Clearance Gate in `stage-review-fix.md` blocks Stage 3 until the human clears it.
 3. **Stage 4 commit** — auto-commit vs leave-unstaged handoff.
 
 Everywhere else is identical across both values. **Subagents never branch on

@@ -90,6 +90,31 @@ instead.
 
 ## Development
 
+### Tests
+
+```
+pnpm install       # vitest, typescript, @types/node
+pnpm test          # run the suite
+pnpm typecheck     # tsc --noEmit; vitest strips types without checking them
+```
+
+The skills in this repo are prompts, not code, so nothing compiles and nothing fails on
+its own when a stage file drifts. `tests/regression-tests/check-stage2-gate.test.ts` is
+the substitute: 13 static assertions over the skill and architecture markdown, each named
+`A1:` through `A13:`. It is what stops the Stage 2 human-verification gate from silently
+regressing.
+
+To run a subset, filter by test name:
+
+```
+pnpm test -- -t "A3:|A4:"
+```
+
+The `--` is required. `pnpm test -t "A3:"` silently drops the filter and runs all 13,
+reporting a green suite — `test` is an npm lifecycle script, so pnpm only forwards flags
+that follow a bare `--`. Anchor each id on its colon, too: `-t "A1"` is a regex that also
+matches `A10` through `A13`.
+
 ### Bumping the version
 
 ```

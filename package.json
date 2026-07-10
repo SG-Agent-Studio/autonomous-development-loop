@@ -4,7 +4,9 @@
   "description": "Autonomous feature-development pipeline for Claude Code and Cursor.",
   "scripts": {
     "version:bump": "node scripts/version/bump-version.js",
-    "version:check": "node scripts/version/check-version.js"
+    "version:check": "node scripts/version/check-version.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "license": "MIT",
   "type": "module",
@@ -14,5 +16,10 @@
       "version": "^11.1.3",
       "onFail": "download"
     }
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }
