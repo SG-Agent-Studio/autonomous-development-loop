@@ -64,4 +64,4 @@ sequenced VERIFY → REVIEW unconditionally. And the verifier was told to branch
 
 The pause is now enforced by a fail-closed Stage 2 Clearance Gate that reads
 `verification-state.json` and admits reviewers only on `last_outcome == "pass"`.
-Regression-guarded by `pnpm verify:stage2`.
+Regression-guarded by `pnpm test`.

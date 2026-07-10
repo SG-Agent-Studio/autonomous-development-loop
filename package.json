@@ -6,8 +6,7 @@
     "version:bump": "node scripts/version/bump-version.js",
     "version:check": "node scripts/version/check-version.js",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "verify:stage2": "vitest run tests/regression-tests/check-stage2-gate.test.ts"
+    "typecheck": "tsc --noEmit"
   },
   "license": "MIT",
   "type": "module",

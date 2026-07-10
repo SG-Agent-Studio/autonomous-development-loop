@@ -8,6 +8,39 @@
 
 **Tech Stack:** Markdown skill definitions (the product), TypeScript + vitest on Node 20+ (the verification harness), pnpm.
 
+## Status: complete
+
+All six tasks are implemented and committed. `pnpm test` reports `13 passed (13)`
+and `pnpm typecheck` exits clean.
+
+| Task | Commit |
+| --- | --- |
+| 1 — Static assertion harness | `002d034` (as JS), `74c9b8d` (moved to `tests/`, converted to TS + vitest) |
+| 2 — Rewrite the verify stage | `b4f496f` |
+| 3 — Enforce the pause in Loop Control | `b44f021` |
+| 4 — Sync the engine skill and file ownership | `8514c87` |
+| 5 — Document the contract | `69da8be` |
+| 6 — Changelog and bug close-out | `96e7f10` |
+
+Task 1 landed in two commits. It was first written as `scripts/verify/check-stage2-gate.js`,
+a hand-rolled runner whose checks returned `true | string`. `74c9b8d` moved it to
+`tests/regression-tests/`, converted it to a vitest suite, and made `read()` throw on a
+missing file. The task text above describes the harness as it exists now, not as it was
+first written.
+
+Two defects were found in the harness itself after Task 1's original commit, both
+invisible to a passing suite:
+
+- **Vacuous passes.** `read()` returned `""` for a missing file, and A1/A2/A8/A9/A10
+  assert a string is *absent* — which `""` satisfies. Run from any directory but the repo
+  root, the suite reported green over files it never opened. Fixed by deriving `ROOT` from
+  `import.meta.url` and throwing on a missing target.
+- **Over-broad filters.** vitest's `-t` is a regex, so `-t "A1|A5"` also selects A10–A13.
+  Every `it()` is now named `A<n>:` and every filter in this plan anchors on the colon.
+
+**Not done:** there is no CI. `pnpm test` runs only when a human types it, so the
+regression guard these tasks built is armed but not automatic.
+
 ## Global Constraints
 
 Copied verbatim from `docs/superpowers/specs/2026-07-10-stage-2-human-verification-gate-design.md`:
@@ -25,9 +58,9 @@ Copied verbatim from `docs/superpowers/specs/2026-07-10-stage-2-human-verificati
 
 | File | Responsibility | Action |
 | --- | --- | --- |
-| `tests/regression-tests/check-stage2-gate.test.ts` | The test harness. Encodes all 13 static assertions from the spec as vitest `it()` blocks; `-t "A1:|A2:"` runs a subset. | Create |
+| `tests/regression-tests/check-stage2-gate.test.ts` | The test harness. Encodes all 13 static assertions from the spec as vitest `it()` blocks; `pnpm test -- -t "A1:|A2:"` runs a subset. | Create |
 | `tsconfig.json` | Strict `noEmit` config so `pnpm typecheck` actually checks the harness. | Create |
-| `package.json` | vitest/typescript devDeps; expose the harness as `pnpm verify:stage2`. | Modify |
+| `package.json` | vitest/typescript devDeps; expose the harness as `pnpm test`. | Modify |
 | `skills/autonomous-feature-development/stage-verify.md` | Verifier contract (mode-blind), orchestrator translation table, state schema, checklist template, STOP block, resume procedure. | Rewrite |
 | `skills/autonomous-feature-development/stage-review-fix.md` | Loop Control step `1a`; Stage 2 Clearance Gate. | Modify |
 | `skills/autonomous-feature-development/stage-impl.md` | File-ownership table gains a `verifications/` row. | Modify |
@@ -70,17 +103,18 @@ Copied verbatim from `docs/superpowers/specs/2026-07-10-stage-2-human-verificati
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `pnpm verify:stage2`, a vitest suite of 13 `it()` blocks named `A1:`…`A13:`.
-  Exits `0` only if every assertion passes. `-t "A3:|A4:"` runs a subset. Every later
-  task runs this.
+- Produces: `pnpm test`, a vitest suite of 13 `it()` blocks named `A1:`…`A13:`.
+  Exits `0` only if every assertion passes. `pnpm test -- -t "A3:|A4:"` runs a subset —
+  the `--` is required, or pnpm swallows the filter and silently runs all 13. Every
+  later task runs this.
 
-- [ ] **Step 1: Add the dev dependencies**
+- [x] **Step 1: Add the dev dependencies**
 
 ```bash
 pnpm add -D vitest typescript @types/node
 ```
 
-- [ ] **Step 2: Write the failing test (the harness itself)**
+- [x] **Step 2: Write the failing test (the harness itself)**
 
 Create `tests/regression-tests/check-stage2-gate.test.ts`:
 
@@ -237,7 +271,7 @@ string satisfies all of them vacuously — a harness that silently passes becaus
 opened nothing is worse than no harness. And `ROOT` is derived from `import.meta.url`,
 not `cwd`, so the assertions mean the same thing wherever the suite is invoked from.
 
-- [ ] **Step 3: Create `tsconfig.json`**
+- [x] **Step 3: Create `tsconfig.json`**
 
 ```json
 {
@@ -260,7 +294,7 @@ not `cwd`, so the assertions mean the same thing wherever the suite is invoked f
 vitest strips types without checking them, so `typecheck` below is what makes the
 TypeScript load-bearing rather than decorative.
 
-- [ ] **Step 4: Register the harness in `package.json`**
+- [x] **Step 4: Register the harness in `package.json`**
 
 In `package.json`, replace the `scripts` block:
 
@@ -269,14 +303,13 @@ In `package.json`, replace the `scripts` block:
     "version:bump": "node scripts/version/bump-version.js",
     "version:check": "node scripts/version/check-version.js",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "verify:stage2": "vitest run tests/regression-tests/check-stage2-gate.test.ts"
+    "typecheck": "tsc --noEmit"
   },
 ```
 
-- [ ] **Step 5: Run the suite to verify it fails**
+- [x] **Step 5: Run the suite to verify it fails**
 
-Run: `pnpm verify:stage2`
+Run: `pnpm test`
 
 Expected: exit code 1, `12 failed | 1 passed (13)`.
 
@@ -294,13 +327,13 @@ Expected: exit code 1, `12 failed | 1 passed (13)`.
 If any of A1–A6 or A8–A13 *passes* at this point, the harness is wrong, not the skills.
 Stop and fix the harness.
 
-- [ ] **Step 6: Confirm the harness typechecks**
+- [x] **Step 6: Confirm the harness typechecks**
 
 Run: `pnpm typecheck`
 
 Expected: exit 0, no output.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add tests/regression-tests/check-stage2-gate.test.ts tsconfig.json package.json pnpm-lock.yaml
@@ -318,13 +351,13 @@ git commit -m "test(verify): add static assertion harness for stage 2 gate"
 - Consumes: `mcp_available` and the resolved commands, injected by `stage-impl.md` Step 0.7.
 - Produces: the verifier output schema (`outcome`, `failures`, `verified[]`, `blocked[]`); the `verification-state.json` schema whose `last_outcome` enum is `"pass" | "fail" | "awaiting_human"`; the heading `## Resume after human verification`, which `stage-review-fix.md` Task 3 refers to by name.
 
-- [ ] **Step 1: Run the assertions this task must turn green, and watch them fail**
+- [x] **Step 1: Run the assertions this task must turn green, and watch them fail**
 
-Run: `pnpm verify:stage2 -t "A1:|A2:|A5:|A6:|A9:|A10:|A11:"`
+Run: `pnpm test -- -t "A1:|A2:|A5:|A6:|A9:|A10:|A11:"`
 
 Expected: `7 failed (7)`, exit 1.
 
-- [ ] **Step 2: Replace the entire contents of `skills/autonomous-feature-development/stage-verify.md`**
+- [x] **Step 2: Replace the entire contents of `skills/autonomous-feature-development/stage-verify.md`**
 
 ````markdown
 # Stage 2: Verification (loop VERIFY step)
@@ -557,19 +590,19 @@ git commit -m "wip: verification failed after 3 rounds — see .loop-logs/<id>/e
 ```
 ````
 
-- [ ] **Step 3: Run the assertions to verify they pass**
+- [x] **Step 3: Run the assertions to verify they pass**
 
-Run: `pnpm verify:stage2 -t "A1:|A2:|A5:|A6:|A9:|A10:|A11:"`
+Run: `pnpm test -- -t "A1:|A2:|A5:|A6:|A9:|A10:|A11:"`
 
 Expected: `7 passed (7)`, exit 0.
 
-- [ ] **Step 4: Confirm nothing else regressed**
+- [x] **Step 4: Confirm nothing else regressed**
 
-Run: `pnpm verify:stage2`
+Run: `pnpm test`
 
 Expected: exit 1, with only A3, A4, A8, A12, A13 still failing. A7 passes.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add skills/autonomous-feature-development/stage-verify.md
@@ -587,13 +620,13 @@ git commit -m "fix(autonomous-dev): make verifier mode-blind and define the stag
 - Consumes: `verification-state.json` `last_outcome` from Task 2; the heading `Resume after human verification` in `stage-verify.md`.
 - Produces: the Stage 2 Clearance Gate — the only admission path to the REVIEW step.
 
-- [ ] **Step 1: Run the assertions this task must turn green, and watch them fail**
+- [x] **Step 1: Run the assertions this task must turn green, and watch them fail**
 
-Run: `pnpm verify:stage2 -t "A3:|A4:"`
+Run: `pnpm test -- -t "A3:|A4:"`
 
 Expected: `2 failed (2)`, exit 1.
 
-- [ ] **Step 2: Replace the Loop Control block**
+- [x] **Step 2: Replace the Loop Control block**
 
 In `skills/autonomous-feature-development/stage-review-fix.md`, replace this:
 
@@ -640,7 +673,7 @@ A pause does not consume an iteration. `iteration` increments only at the top of
 The ≤5 cap therefore counts review rounds, not human round-trips.
 ````
 
-- [ ] **Step 3: Insert the Stage 2 Clearance Gate at the top of Part 1**
+- [x] **Step 3: Insert the Stage 2 Clearance Gate at the top of Part 1**
 
 In the same file, immediately **after** the line `## Part 1: Review (one iteration)` and **before** the line `### Spawn fresh reviewers`, insert:
 
@@ -671,13 +704,13 @@ If last_outcome is "awaiting_human", the run is waiting on the checklist at
 Then end the turn. Do not advance to Stage 3 or Stage 4.
 ````
 
-- [ ] **Step 4: Run the assertions to verify they pass**
+- [x] **Step 4: Run the assertions to verify they pass**
 
-Run: `pnpm verify:stage2 -t "A3:|A4:"`
+Run: `pnpm test -- -t "A3:|A4:"`
 
 Expected: `2 passed (2)`, exit 0.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add skills/autonomous-feature-development/stage-review-fix.md
@@ -696,15 +729,15 @@ git commit -m "fix(autonomous-dev): gate stage 3 review behind stage 2 clearance
 - Consumes: the verifier contract from Task 2, the gate from Task 3.
 - Produces: `mcp_available` as the verifier's only capability input — the subagent rule in `SKILL.md` becomes factually true.
 
-- [ ] **Step 1: Run the assertions this task must turn green**
+- [x] **Step 1: Run the assertions this task must turn green**
 
-Run: `pnpm verify:stage2 -t "A7:|A12:"`
+Run: `pnpm test -- -t "A7:|A12:"`
 
 Expected: A7 passes (rule text already present), A12 fails — the file-ownership table has no `verifications/` row. Exit 1.
 
 A7 is already green and this task must keep it that way. It guards the rule text that Task 2 made true.
 
-- [ ] **Step 2: Add the `verifications/` row to the file-ownership table**
+- [x] **Step 2: Add the `verifications/` row to the file-ownership table**
 
 In `skills/autonomous-feature-development/stage-impl.md`, in the table under
 `## Orchestrator: Agent Output Schema and File Ownership`, replace this row:
@@ -720,7 +753,7 @@ with these two rows:
 | `.loop-logs/<id>/verifications/verification-<round>.md` | Orchestrator (written), **human (edits `Result:` lines)** | On human handoff (Stage 2, `human-in-loop` only)                    |
 ```
 
-- [ ] **Step 3: Tighten Step 0.7's verifier-input sentence**
+- [x] **Step 3: Tighten Step 0.7's verifier-input sentence**
 
 In the same file, in `### Step 0.7 — Probe verification capability (Mode A)`, replace:
 
@@ -739,7 +772,7 @@ translates them into mode policy (see `stage-verify.md`). Mode B has no `spec_pa
 skip the AC-scan; the verify-time per-AC backstop still applies.
 ```
 
-- [ ] **Step 4: Correct juncture 2 in the engine skill**
+- [x] **Step 4: Correct juncture 2 in the engine skill**
 
 In `skills/autonomous-feature-development/SKILL.md`, replace:
 
@@ -756,19 +789,19 @@ with:
    Clearance Gate in `stage-review-fix.md` blocks Stage 3 until the human clears it.
 ```
 
-- [ ] **Step 5: Run the assertions to verify they pass**
+- [x] **Step 5: Run the assertions to verify they pass**
 
-Run: `pnpm verify:stage2 -t "A7:|A12:"`
+Run: `pnpm test -- -t "A7:|A12:"`
 
 Expected: `2 passed (2)`, exit 0.
 
-- [ ] **Step 6: Confirm the whole suite is now only missing the docs assertions**
+- [x] **Step 6: Confirm the whole suite is now only missing the docs assertions**
 
-Run: `pnpm verify:stage2`
+Run: `pnpm test`
 
 Expected: exit 1, with exactly A8 and A13 still failing.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add skills/autonomous-feature-development/stage-impl.md skills/autonomous-feature-development/SKILL.md
@@ -787,13 +820,13 @@ git commit -m "fix(autonomous-dev): make the mode-blind subagent rule true acros
 - Consumes: everything from Tasks 2–4.
 - Produces: nothing downstream. This is the user-facing description of the contract.
 
-- [ ] **Step 1: Run the assertions this task must turn green, and watch them fail**
+- [x] **Step 1: Run the assertions this task must turn green, and watch them fail**
 
-Run: `pnpm verify:stage2 -t "A8:|A13:"`
+Run: `pnpm test -- -t "A8:|A13:"`
 
 Expected: `2 failed (2)`, exit 1.
 
-- [ ] **Step 2: Rewrite juncture 2 in the wrapper skill**
+- [x] **Step 2: Rewrite juncture 2 in the wrapper skill**
 
 In `skills/human-in-loop-feature-development/SKILL.md`, replace this list item:
 
@@ -818,7 +851,7 @@ with:
    `(pending)` keep the run paused.
 ```
 
-- [ ] **Step 3: Sync the architecture doc**
+- [x] **Step 3: Sync the architecture doc**
 
 In `docs/architecture/002-skills.md`, find the sentence describing what subagents receive:
 
@@ -837,19 +870,19 @@ of the review step admits reviewers only when `last_outcome == "pass"`, so a mis
 stale, or `awaiting_human` state file halts the pipeline. The gate fails closed.
 ```
 
-- [ ] **Step 4: Run the assertions to verify they pass**
+- [x] **Step 4: Run the assertions to verify they pass**
 
-Run: `pnpm verify:stage2 -t "A8:|A13:"`
+Run: `pnpm test -- -t "A8:|A13:"`
 
 Expected: `2 passed (2)`, exit 0.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
-Run: `pnpm verify:stage2`
+Run: `pnpm test`
 
 Expected: `13 passed (13)`, exit 0.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add skills/human-in-loop-feature-development/SKILL.md docs/architecture/002-skills.md
@@ -868,7 +901,7 @@ git commit -m "docs: describe the stage 2 clearance gate and file-based results 
 - Consumes: the completed fix.
 - Produces: nothing.
 
-- [ ] **Step 1: Add the changelog entry**
+- [x] **Step 1: Add the changelog entry**
 
 In `CHANGELOG.md`, insert immediately before the `## [0.3.0] - 2026-07-09` line:
 
@@ -881,7 +914,7 @@ In `CHANGELOG.md`, insert immediately before the `## [0.3.0] - 2026-07-09` line:
 
 ```
 
-- [ ] **Step 2: Mark Bug 1 resolved**
+- [x] **Step 2: Mark Bug 1 resolved**
 
 In `docs/user-feedbacks/2026-07-09-user-feedback.md`, replace the heading:
 
@@ -910,22 +943,22 @@ sequenced VERIFY → REVIEW unconditionally. And the verifier was told to branch
 
 The pause is now enforced by a fail-closed Stage 2 Clearance Gate that reads
 `verification-state.json` and admits reviewers only on `last_outcome == "pass"`.
-Regression-guarded by `pnpm verify:stage2`.
+Regression-guarded by `pnpm test`.
 ```
 
-- [ ] **Step 3: Run the full suite one last time**
+- [x] **Step 3: Run the full suite one last time**
 
-Run: `pnpm verify:stage2`
+Run: `pnpm test`
 
 Expected: `13 passed (13)`, exit 0.
 
-- [ ] **Step 4: Confirm no stale contract survives anywhere in the repo**
+- [x] **Step 4: Confirm no stale contract survives anywhere in the repo**
 
 Run: `grep -rn "needs_human" skills/ docs/architecture/ CHANGELOG.md`
 
 Expected: no output, exit 1. (Matches in `docs/superpowers/` are expected and correct — the spec and this plan both describe the removal.)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add CHANGELOG.md docs/user-feedbacks/2026-07-09-user-feedback.md
