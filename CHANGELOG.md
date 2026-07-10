@@ -3,6 +3,12 @@
 All notable changes to this plugin are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Stage 2 human verification no longer falls through to Stage 3. The verifier subagent is now mode-blind — it returns a `blocked[]` list of acceptance criteria it lacked the capability to check, and the orchestrator alone maps that onto mode policy. In `human-in-loop`, a blocked criterion writes a checklist, records `last_outcome: "awaiting_human"`, and pauses; a new fail-closed Stage 2 Clearance Gate refuses to spawn reviewers unless `last_outcome == "pass"`. The human records results in the checklist file and replies `continue`.
+
 ## [0.3.0] - 2026-07-09
 
 ### Added

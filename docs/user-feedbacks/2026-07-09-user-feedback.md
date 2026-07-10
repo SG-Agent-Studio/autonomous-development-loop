@@ -34,7 +34,7 @@ After all subagents completed and ready to commit state, all changes should just
 
 # Bugs after resolving the issues
 
-## Bug 1 - Orchastrator agent misbehave
+## [x] Bug 1 - Orchastrator agent misbehave
 
 The agent behaviour when executing task with skill `human-in-loop-feature-development` in @skills/human-in-loop-feature-development/ is not what it expected to be.
 
@@ -51,3 +51,17 @@ In stage 2, agent wrote a detailed verification task list, then proceed to stage
 ### Key constraints violated
 
 - Do NOT proceed to stage 3 while stage 2 is not cleared.
+
+### Resolution
+
+Fixed by `docs/superpowers/plans/2026-07-10-stage-2-human-verification-gate.md`.
+
+Two defects, both on the same path. The pause lived in the callee (`stage-verify.md`)
+while control flow lived in the caller (`stage-review-fix.md` Loop Control), which
+sequenced VERIFY → REVIEW unconditionally. And the verifier was told to branch on
+`interaction_mode`, which it was never given — so it might never have reported
+`needs_human` at all.
+
+The pause is now enforced by a fail-closed Stage 2 Clearance Gate that reads
+`verification-state.json` and admits reviewers only on `last_outcome == "pass"`.
+Regression-guarded by `pnpm verify:stage2`.
