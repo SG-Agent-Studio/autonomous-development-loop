@@ -190,7 +190,7 @@ under `.loop-logs/`.
 - [PASS|FAIL] <AC> — <evidence>
 
 ## Needs your verification
-- [ ] <AC text>
+- <AC text>
   - How to check: <how_to_check from verifier>
   - Where to observe: <where_to_observe from verifier>
   - Result: (pending)
@@ -198,6 +198,9 @@ under `.loop-logs/`.
 ---
 When every `Result:` line reads PASS or FAIL, reply `continue`.
 ```
+
+No checkbox. `Result:` is the single source of truth per item — a checkbox alongside
+it would be a second field that can disagree with the first.
 
 `Result:` is the machine-readable field. It takes exactly one of:
 
