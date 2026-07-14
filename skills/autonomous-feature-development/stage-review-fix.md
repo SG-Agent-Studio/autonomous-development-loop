@@ -174,6 +174,9 @@ fix is never the agent that reviews it:
 
 ### Squash-merge each fix (orchestrator)
 
+Follow `../../rules/git-linear-history.md` — squash merge only, never plain
+`git merge`.
+
 ```bash
 git merge --squash worktree/fix-<issue-id>
 git commit -m "fix(<scope>): <issue description>"

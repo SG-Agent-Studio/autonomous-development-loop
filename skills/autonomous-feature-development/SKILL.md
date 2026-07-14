@@ -85,7 +85,8 @@ Issues already exist in conversation context. Read `./stage-review-fix.md`: the 
 ## Hard Rules (both modes)
 
 1. Never delete tests to make them pass.
-2. Squash merge only — never plain `git merge` on worktree branches.
+2. Squash merge only — never plain `git merge` on worktree branches. See
+   `../../rules/git-linear-history.md` for the full rule and rationale.
 3. `interaction_mode == autonomous`: always commit at the end, even partial (`wip:`
    prefix if any task failed). `human-in-loop`: never auto-commit — leave changes
    unstaged on the branch for the human (see `stage-final.md`).
