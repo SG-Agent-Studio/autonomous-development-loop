@@ -8,6 +8,7 @@
     "description": "Marketplace for the Autonomous Development Plugin.",
     "version": "0.3.1"
   },
+  "allowCrossMarketplaceDependenciesOn": ["claude-plugins-official", "ponytail"],
   "plugins": [
     {
       "name": "autonomous-development-plugin",
