@@ -9,17 +9,11 @@ on their own.
 > (identical `SKILL.md` format), so this single repo ships manifests for each:
 > `.claude-plugin/` + `.mcp.json` for Claude Code, `.cursor-plugin/` + `mcp.json`
 > for Cursor. The skills depend on agent primitives — cross-skill invocation,
-> subagent dispatch, and `git worktree`. Claude Code supports all of them and
-> auto-installs the `superpowers`/`ponytail` dependencies below as plugin
-> dependencies (see Prerequisites). Cursor supports subagents and `git worktree`,
-> but its dispatch semantics differ, and as of this writing Cursor's plugin
-> manifest has no `dependencies` field or auto-install mechanism at all — this
-> is a confirmed platform gap, not a config we could add here (there's an open,
-> unresolved [Cursor forum request for this](https://forum.cursor.com/t/add-support-for-plugin-dependencies-claude-parity/161252)).
-> `superpowers`/`ponytail` also aren't on the Cursor marketplace, so even with
-> that field there'd be nothing to point it at — on Cursor both stages degrade
-> to their built-in fallbacks. On Cursor, treat first runs as a compatibility
-> test, not a guarantee.
+> subagent dispatch, and `git worktree`. Claude Code supports all of them; Cursor
+> supports subagents and `git worktree`, but its dispatch semantics differ and the
+> `superpowers`/`ponytail` dependencies below are not on the Cursor marketplace, so
+> some stages degrade to their built-in fallbacks (see Prerequisites). On Cursor,
+> treat first runs as a compatibility test, not a guarantee.
 
 ## Skills
 
@@ -32,18 +26,15 @@ on their own.
 
 ## Prerequisites
 
-This plugin depends on capabilities it does **not** bundle. On Claude Code,
-`superpowers` and `ponytail` are declared as plugin `dependencies` in
-`.claude-plugin/plugin.json` (requires Claude Code v2.1.110+), so `/plugin
-install autonomous-development-plugin@autonomous-development` auto-installs
-both alongside it. If a dependency is somehow still missing at runtime, the
-relevant skill will stop and tell you rather than failing silently.
+This plugin depends on capabilities it does **not** bundle. Claude Code has no
+automatic plugin dependency resolution, so you must install these yourself before
+use. If a dependency is missing, the relevant skill will stop and tell you.
 
 | Dependency | Required for | Notes |
 |------------|--------------|-------|
-| [`superpowers`](https://github.com/anthropics/superpowers) plugin | Branch completion (`superpowers:finishing-a-development-branch`) and the verification fallback (`superpowers:verification-before-completion`) | Auto-installed from the official `claude-plugins-official` marketplace. |
-| [`ponytail`](https://github.com/DietrichGebert/ponytail) plugin (`ponytail:ponytail-review`) | Mode A review stage in `autonomous-feature-development` | Used as one of three parallel reviewers. Auto-installed from its `ponytail` marketplace. |
+| [`superpowers`](https://github.com/anthropics/superpowers) plugin | Branch completion (`superpowers:finishing-a-development-branch`) and the verification fallback (`superpowers:verification-before-completion`) | Hard requirement. Install before this plugin. |
 | **playwright MCP** | Tier 3 UI behavior verification in `verifying-implementation` | Bundled in this plugin's `.mcp.json` (`pnpx @playwright/mcp@latest`). Requires `pnpm`/`pnpx` on PATH. Without it, UI verification degrades to the user-confirmation fallback. |
+| [`ponytail`](https://github.com/) plugin (`ponytail:ponytail-review`) | Mode A review stage in `autonomous-feature-development` | Used as one of three parallel reviewers. If absent, that reviewer is skipped. |
 
 The pipeline needs project-local `lint` and `test` commands (with optional
 `format` and `start`). It resolves them at Stage 0 from a `## Commands` section in
@@ -56,14 +47,15 @@ This repo doubles as its own single-plugin marketplace for both agents.
 
 ### Claude Code
 
-1. Add this repo as a marketplace, then install the plugin — `superpowers` and
-   `ponytail` auto-install alongside it as declared dependencies:
+1. Install the `superpowers` plugin first (and `ponytail` if you use the full
+   pipeline).
+2. Add this repo as a marketplace, then install the plugin:
    ```
    /plugin marketplace add <this-repo-url-or-path>
    /plugin install autonomous-development-plugin@autonomous-development
    ```
-   (See `.claude-plugin/marketplace.json`.) Requires Claude Code v2.1.110+.
-2. Ensure `pnpm`/`pnpx` is available so the bundled playwright MCP can start.
+   (See `.claude-plugin/marketplace.json`.)
+3. Ensure `pnpm`/`pnpx` is available so the bundled playwright MCP can start.
 
 ### Cursor
 
@@ -74,13 +66,9 @@ This repo doubles as its own single-plugin marketplace for both agents.
 3. Reload Cursor (**Developer: Reload Window**) and confirm the skills appear
    in settings.
 4. Ensure `pnpm`/`pnpx` is on PATH for the bundled playwright MCP (`mcp.json`).
-5. `superpowers` and `ponytail` are **not** on the Cursor marketplace, and
-   Cursor's plugin system has no dependency-declaration/auto-install field to
-   pull them in even if they were (unlike Claude Code's `plugin.json`
-   `dependencies` — see Prerequisites). Their skills are unavailable, so the
-   stages that call them degrade to the built-in fallbacks rather than failing
-   (each skill says so when a dependency is missing). Nothing to configure here
-   until Cursor ships dependency support upstream.
+5. `superpowers` and `ponytail` are **not** on the Cursor marketplace. Their
+   skills are unavailable, so the stages that call them degrade to the built-in
+   fallbacks rather than failing (each skill says so when a dependency is missing).
 
 ## Usage
 
