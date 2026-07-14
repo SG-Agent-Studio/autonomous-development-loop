@@ -134,7 +134,7 @@ flowchart TD
     R0([REVIEW step]) --> PAR[orchestrator spawns 3 reviewers\nin parallel — Sonnet 1m each]
 
     PAR --> RA[Reviewer A\nenhanced-review]
-    PAR --> RB[Reviewer B\nponytail-review\nif installed]
+    PAR --> RB[Reviewer B\nponytail-review]
     PAR --> RC[Reviewer C\nsimplify]
 
     RA & RB & RC --> CONS[consolidation agent:\nverify real + evidence-backed\ndeduplicate, assign severity]

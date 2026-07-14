@@ -44,8 +44,8 @@ human-triggered only, and touches logs/worktrees/branches, never product code.
 
 **Required external plugins:**
 
-- `superpowers` — used by `autonomous-feature-development` (Stage 4) and `verifying-implementation` (fallback). Install before invoking either skill.
-- `ponytail` — used by `autonomous-feature-development` Stage 3 Reviewer B. Optional; skipped if absent.
+- `superpowers` — used by `autonomous-feature-development` (Stage 4) and `verifying-implementation` (fallback). Auto-installed as a plugin dependency (see `.claude-plugin/plugin.json`).
+- `ponytail` — used by `autonomous-feature-development` Stage 3 Reviewer B. Auto-installed as a plugin dependency (see `.claude-plugin/plugin.json`).
 
 ---
 

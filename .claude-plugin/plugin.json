@@ -5,5 +5,9 @@
   "author": {
     "name": "Lee Jian Hong",
     "email": "jiyue0904@gmail.com"
-  }
+  },
+  "dependencies": [
+    { "name": "superpowers", "marketplace": "claude-plugins-official" },
+    { "name": "ponytail", "marketplace": "ponytail" }
+  ]
 }

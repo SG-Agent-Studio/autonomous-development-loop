@@ -15,9 +15,8 @@ user to install it** (see the plugin README) rather than failing silently:
 
 - **`superpowers`** (required) — used for branch completion
   (`superpowers:finishing-a-development-branch`).
-- **`ponytail`** (optional) — used as one of three parallel reviewers in Stage 3
-  Mode A (`ponytail:ponytail-review`). If absent, skip that reviewer and proceed
-  with the remaining two.
+- **`ponytail`** (required) — used as one of three parallel reviewers in Stage 3
+  Mode A (`ponytail:ponytail-review`).
 - **playwright MCP** — required for UI verification when `interaction_mode ==
   autonomous` (bundled in this plugin's `.mcp.json`). When `human-in-loop`, MCP is
   optional: if absent, UI verification degrades to a human checklist handoff (see
