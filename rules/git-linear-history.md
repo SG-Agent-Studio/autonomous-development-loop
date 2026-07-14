@@ -1,6 +1,7 @@
 ---
 description: Enforce linear git history — no merge commits from worktree branches on feature branches
 globs: ["**/*"]
+alwaysApply: true
 ---
 
 # Git Linear History
