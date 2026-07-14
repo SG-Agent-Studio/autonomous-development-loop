@@ -12,10 +12,14 @@ on their own.
 > subagent dispatch, and `git worktree`. Claude Code supports all of them and
 > auto-installs the `superpowers`/`ponytail` dependencies below as plugin
 > dependencies (see Prerequisites). Cursor supports subagents and `git worktree`,
-> but its dispatch semantics differ and it has no equivalent dependency
-> auto-install, and `superpowers`/`ponytail` aren't on the Cursor marketplace at
-> all, so on Cursor both stages degrade to their built-in fallbacks. On Cursor,
-> treat first runs as a compatibility test, not a guarantee.
+> but its dispatch semantics differ, and as of this writing Cursor's plugin
+> manifest has no `dependencies` field or auto-install mechanism at all — this
+> is a confirmed platform gap, not a config we could add here (there's an open,
+> unresolved [Cursor forum request for this](https://forum.cursor.com/t/add-support-for-plugin-dependencies-claude-parity/161252)).
+> `superpowers`/`ponytail` also aren't on the Cursor marketplace, so even with
+> that field there'd be nothing to point it at — on Cursor both stages degrade
+> to their built-in fallbacks. On Cursor, treat first runs as a compatibility
+> test, not a guarantee.
 
 ## Skills
 
@@ -70,9 +74,13 @@ This repo doubles as its own single-plugin marketplace for both agents.
 3. Reload Cursor (**Developer: Reload Window**) and confirm the skills appear
    in settings.
 4. Ensure `pnpm`/`pnpx` is on PATH for the bundled playwright MCP (`mcp.json`).
-5. `superpowers` and `ponytail` are **not** on the Cursor marketplace. Their
-   skills are unavailable, so the stages that call them degrade to the built-in
-   fallbacks rather than failing (each skill says so when a dependency is missing).
+5. `superpowers` and `ponytail` are **not** on the Cursor marketplace, and
+   Cursor's plugin system has no dependency-declaration/auto-install field to
+   pull them in even if they were (unlike Claude Code's `plugin.json`
+   `dependencies` — see Prerequisites). Their skills are unavailable, so the
+   stages that call them degrade to the built-in fallbacks rather than failing
+   (each skill says so when a dependency is missing). Nothing to configure here
+   until Cursor ships dependency support upstream.
 
 ## Usage
 
