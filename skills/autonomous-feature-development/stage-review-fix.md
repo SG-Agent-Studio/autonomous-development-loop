@@ -101,7 +101,7 @@ reviews independently and returns raw findings:
 | Agent      | Skill                                                                |
 | ---------- | -------------------------------------------------------------------- |
 | Reviewer A | `enhanced-review`                                                    |
-| Reviewer B | `ponytail:ponytail-review`                                           |
+| Reviewer B | `ponytail:ponytail-review` (skip if `ponytail` plugin not installed) |
 | Reviewer C | `simplify`                                                           |
 
 The orchestrator passes all raw findings to a **consolidation agent**, which:
@@ -127,7 +127,7 @@ The orchestrator (NOT the consolidator) writes
 
 <raw>
 ### Reviewer B — ponytail
-<raw>
+<raw, or: skipped — plugin not installed>
 ### Reviewer C — simplify
 <raw>
 
