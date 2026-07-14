@@ -313,6 +313,9 @@ Stop.
 
 ### Squash Merge (after ALL agents finish)
 
+Follow `../../rules/git-linear-history.md` — squash merge only, never plain
+`git merge`, on every worktree branch below.
+
 Wait for all worktree agents to complete (success or hard-stop).
 
 **For each task with `"status": "completed"`:**
