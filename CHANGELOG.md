@@ -5,6 +5,11 @@ All notable changes to this plugin are documented here. This project follows
 
 ## [Unreleased]
 
+### Added
+
+- `explain-changes` skill — generates a self-contained HTML pitch-and-quiz report explaining a diff (with plan/spec/loop-log context) or an existing codebase area, ending in a self-check quiz, so a reviewer builds real understanding before merging. Auto-invoked at the end of `autonomous-feature-development` (non-blocking).
+- `autonomous-feature-development` now writes a consolidated `.loop-logs/<id>/logs/decisions.md` at Stage 4, aggregating each task's `### Key Decisions` and failed-attempt root causes plus fixed-issue root causes from the review loop.
+
 ### Fixed
 
 - Stage 2 human verification no longer falls through to Stage 3. The verifier subagent is now mode-blind — it returns a `blocked[]` list of acceptance criteria it lacked the capability to check, and the orchestrator alone maps that onto mode policy. In `human-in-loop`, a blocked criterion writes a checklist, records `last_outcome: "awaiting_human"`, and pauses; a new fail-closed Stage 2 Clearance Gate refuses to spawn reviewers unless `last_outcome == "pass"`. The human records results in the checklist file and replies `continue`.
