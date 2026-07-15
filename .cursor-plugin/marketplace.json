@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Marketplace for the Autonomous Development Plugin.",
-    "version": "0.3.1"
+    "version": "0.4.0"
   },
   "plugins": [
     {
