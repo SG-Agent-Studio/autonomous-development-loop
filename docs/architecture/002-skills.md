@@ -9,6 +9,7 @@
 | `enhanced-review`                | `skills/enhanced-review/SKILL.md`                | Linus-style review for code, specs, or plans with five-why reflection before any verdict              | Before merging code; before implementing a spec or plan (shift-left); when something feels off                     |
 | `verifying-implementation`       | `skills/verifying-implementation/SKILL.md`       | Boot the system and verify against acceptance criteria using a fresh subagent                         | Work touches a running service; plan has a Verification section; AC describe observable runtime behavior           |
 | `cleanup-loop-logs`              | `skills/cleanup-loop-logs/SKILL.md`              | Human-only purge of one run's `.loop-logs/<id>/` logs + orphaned worktrees/branches                   | Human-triggered only (`disable-model-invocation`); never invoked by the model                                     |
+| `explain-changes`                | `skills/explain-changes/SKILL.md`                | Generates a static HTML pitch-and-quiz report explaining a diff or a codebase area, ending in a self-check quiz | Human asks to explain/understand/review a diff, branch, or feature/module/mechanism/workflow; also auto-invoked at the end of `autonomous-feature-development` |
 
 ---
 
@@ -25,6 +26,7 @@ flowchart TD
     SP[superpowers:finishing-a-development-branch\nexternal plugin]
     VBC[superpowers:verification-before-completion\nexternal plugin]
     PW[playwright MCP\nbundled in .mcp.json]
+    EC[explain-changes]
 
     HIL -->|sets interaction_mode = human-in-loop| AFD
 
@@ -34,6 +36,7 @@ flowchart TD
     AFD -->|loop: REVIEW Reviewer C| SM
     AFD -->|loop: per-issue plan + code review| ER
     AFD -->|Stage 4 branch completion| SP
+    AFD -->|Stage 4 reviewer report, non-blocking| EC
 
     VI -->|fallback when no Tier-3 trigger| VBC
     VI -->|UI verification| PW
@@ -75,7 +78,7 @@ is namespaced by a single `id` computed in Stage 0; all logs live under
 | `stage-impl.md`       | Stage 0 (guard/setup, compute `id`) + Stage 1 (parallel TDD worktrees)                                                  |
 | `stage-verify.md`     | Loop VERIFY step: orchestrator spawns a verifier subagent (structured pass/fail), fixes via subagents, ≤3 inner rounds  |
 | `stage-review-fix.md` | Loop control + Stage 3 REVIEW (spawn reviewers, consolidate, write `code-review/round-<N>.md`, parallel fix) + Mode B entry |
-| `stage-final.md`      | Stage 4 (lint/format, summary with loop iterations + deferred minors, commit, branch completion)                        |
+| `stage-final.md`      | Stage 4 (lint/format, summary with loop iterations + deferred minors, decisions log, reviewer report, commit, branch completion) |
 | `log-schema.md`       | Single source of truth for the task log format                                                                          |
 | `log-sample.md`       | Two-attempt example for agents writing task logs                                                                        |
 
@@ -218,3 +221,33 @@ left behind. Touches logs, worktrees, and branches only — never product code.
 | File       | Purpose                                                  |
 | ---------- | -------------------------------------------------------- |
 | `SKILL.md` | Target selection, confirmation gate, prune + delete flow |
+
+---
+
+### `explain-changes`
+
+Generates a self-contained HTML report — a narrative explanation plus a
+self-check quiz — either for a diff (**diff-review** mode) or an existing
+codebase area (**explainer** mode). Model-invoked, and also called by
+`autonomous-feature-development` at the end of Stage 4 (non-blocking).
+
+**Flow:**
+
+1. **Resolve mode** — inferred from the request, or fixed to diff-review when
+   auto-triggered.
+2. **Resolve inputs** — diff scope + plan/spec/logs for diff-review; a
+   confirmed codebase area for explainer.
+3. **Resolve output path** — `temp/` (standalone), or
+   `.loop-logs/<id>/reports/` (loop-referencing or auto-triggered).
+4. **Spawn one subagent** — gathers context and drafts structured findings +
+   quiz content as JSON (skipped for an empty diff).
+5. **Render** — fills `template.html` with the subagent's JSON and writes the
+   report.
+
+**File structure:**
+
+| File                 | Purpose                                                        |
+| -------------------- | --------------------------------------------------------------- |
+| `SKILL.md`           | Mode/input/output resolution, subagent dispatch, render steps  |
+| `template.html`      | Static HTML/CSS report template, no JS                         |
+| `subagent-brief.md`  | JSON schema + instructions for the gather+draft subagent       |

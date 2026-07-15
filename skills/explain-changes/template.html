@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{TITLE}}</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 780px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }
+  header { border-bottom: 2px solid #ccc; margin-bottom: 1.5rem; padding-bottom: 1rem; }
+  .badge { display: inline-block; background: #eee; border-radius: 4px; padding: 0.15rem 0.5rem; font-size: 0.85rem; margin-right: 0.5rem; }
+  section.area { margin: 2rem 0; padding-top: 1rem; border-top: 1px solid #ddd; }
+  .quiz { background: #f7f7f7; border-radius: 6px; padding: 1rem; margin-top: 1rem; }
+  .quiz details { margin: 0.75rem 0; }
+  .quiz summary { cursor: pointer; font-weight: 600; }
+  .quiz .answer { margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: #fff; border-left: 3px solid #888; }
+  ul.plain li { margin-bottom: 0.5rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">{{MODE_LABEL}}</span>
+  <span class="badge">{{CONTEXT_LABEL}}</span>
+  <span class="badge">{{DATE}}</span>
+  <h1>{{TITLE}}</h1>
+  <p>{{SUMMARY}}</p>
+</header>
+
+<section>
+  <h2>Why</h2>
+  <p>{{WHY}}</p>
+</section>
+
+<!-- SECTION:BEGIN — duplicate this whole <section class="area"> block once per entry in sections[] -->
+<section class="area">
+  <h2>{{SECTION_HEADING}}</h2>
+  <p>{{SECTION_BODY}}</p>
+
+  <div class="quiz">
+    <h3>Self-check</h3>
+    <!-- QUIZ_ITEM:BEGIN — duplicate this <details> block once per quiz item in this section -->
+    <details>
+      <summary>{{QUIZ_QUESTION}}</summary>
+      <div class="answer"><strong>{{QUIZ_ANSWER}}</strong><br>{{QUIZ_EXPLANATION}}</div>
+    </details>
+    <!-- QUIZ_ITEM:END -->
+  </div>
+</section>
+<!-- SECTION:END -->
+
+<!-- CHALLENGES:BEGIN — include this whole <section> only if challenges_and_decisions is non-empty -->
+<section>
+  <h2>Challenges &amp; decisions</h2>
+  <ul class="plain">
+    <!-- CHALLENGE_ITEM:BEGIN — duplicate this <li> once per entry -->
+    <li>{{CHALLENGE_TEXT}}</li>
+    <!-- CHALLENGE_ITEM:END -->
+  </ul>
+</section>
+<!-- CHALLENGES:END -->
+
+<!-- RISKS:BEGIN — include this whole <section> only if risks_or_deferred is non-empty -->
+<section>
+  <h2>Known risks &amp; deferred items</h2>
+  <ul class="plain">
+    <!-- RISK_ITEM:BEGIN — duplicate this <li> once per entry -->
+    <li>{{RISK_TEXT}}</li>
+    <!-- RISK_ITEM:END -->
+  </ul>
+</section>
+<!-- RISKS:END -->
+
+</body>
+</html>
