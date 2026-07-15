@@ -22,6 +22,10 @@ user to install it** (see the plugin README) rather than failing silently:
   autonomous` (bundled in this plugin's `.mcp.json`). When `human-in-loop`, MCP is
   optional: if absent, UI verification degrades to a human checklist handoff (see
   `stage-verify.md`).
+- **`explain-changes`** (optional) — generates a reviewer-facing HTML report at
+  the end of Stage 4 (`stage-final.md` Step 4.2b). If absent, or if it fails,
+  skip it and proceed to commit/handoff — report generation never blocks the
+  pipeline.
 
 ## Mode Selection
 
