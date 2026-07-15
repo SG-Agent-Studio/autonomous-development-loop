@@ -222,6 +222,8 @@ left behind. Touches logs, worktrees, and branches only — never product code.
 | ---------- | -------------------------------------------------------- |
 | `SKILL.md` | Target selection, confirmation gate, prune + delete flow |
 
+---
+
 ### `explain-changes`
 
 Generates a self-contained HTML report — a narrative explanation plus a
