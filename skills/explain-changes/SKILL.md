@@ -59,8 +59,11 @@ by `-`.
 ## Step 4 — Spawn the gather + draft subagent
 
 Skip this step if `empty_diff == true` (go straight to Step 5 with a minimal
-payload: `sections` = one entry stating no changes were found,
-`risks_or_deferred` = `[]`, `challenges_and_decisions` = `[]`).
+payload: populate `title` (a concise label from the branch or described area),
+`mode` (the mode resolved in Step 1), `context_label` (from Step 2), `summary`
+("No changes were found"), `why` ("No modifications in the diff scope"),
+`sections` (one entry stating no changes), `risks_or_deferred` (`[]`), and
+`challenges_and_decisions` (`[]`)).
 
 Read `./subagent-brief.md`. Spawn one subagent whose prompt is: the full
 contents of `subagent-brief.md`, followed by every input resolved in Step 2 (the
