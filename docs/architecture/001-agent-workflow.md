@@ -176,13 +176,17 @@ flowchart TD
     LF --> LFR{both\nexit 0?}
     LFR -->|no| FIX[fix and rerun]
     FIX --> LF
-    LFR -->|yes| SUM[write logs/summary.md\nincl. loop iterations + deferred minors]
-    SUM --> CMT{all tasks\ncompleted?}
+    LFR -->|yes| SUM[write logs/summary.md + decisions.md\nincl. loop iterations + deferred minors]
+    SUM --> EC[explain-changes: diff-review report\n.loop-logs/id/reports/ — non-blocking]
+    EC --> CMT{all tasks\ncompleted?}
     CMT -->|yes| CF[git commit feat: ...]
     CMT -->|partial| CW[git commit wip: partial ...]
     CF & CW --> BC[superpowers:finishing-a-development-branch]
     BC --> DONE([Done])
 ```
+
+Mode B exits via `superpowers:finishing-a-development-branch` directly (see below)
+and never reaches `stage-final.md`, so it never triggers `explain-changes`.
 
 ---
 
@@ -220,3 +224,4 @@ All paths are namespaced under the run `id`.
 | `.loop-logs/<id>/code-review/round-<N>.md`      | Orchestrator | After each REVIEW iteration                                              |
 | `.loop-logs/<id>/error/review-loop-exhausted.md`| Orchestrator | If the loop hits 5 iterations with actionable issues still open          |
 | `.loop-logs/<id>/logs/summary.md`               | Orchestrator | Stage 4 only                                                             |
+| `.loop-logs/<id>/reports/<timestamp>-diff-review-<slug>.html` | `explain-changes` subagent | Stage 4 Step 4.2b, Mode A only, non-blocking             |
