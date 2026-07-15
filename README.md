@@ -17,12 +17,13 @@ on their own.
 
 ## Skills
 
-| Skill | Use it when |
-|-------|-------------|
-| `autonomous-feature-development` | You have a plan + spec ready to implement, or you received code-review feedback that needs validation and fixing. Runs the full pipeline or a standalone review-fix. |
-| `human-in-loop-feature-development` | You are developing locally with a human present and want the pipeline to clarify unresolved commands, hand off UI verification when Playwright MCP is unavailable, and leave changes unstaged for you to commit. |
-| `verifying-implementation` | Work has observable runtime behavior (a service, DB, UI, queue, job). Gates a "done" claim behind a fresh subagent observing the running system meet its acceptance criteria. |
-| `enhanced-review` | Before merging code, or before implementing a spec/plan. Linus-Torvalds-style review with a five-why reflection so every verdict is evidence-backed. |
+| Skill                               | Use it when                                                                                                                                                                                                                               |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `autonomous-feature-development`    | You have a plan + spec ready to implement, or you received code-review feedback that needs validation and fixing. Runs the full pipeline or a standalone review-fix.                                                                      |
+| `human-in-loop-feature-development` | You are developing locally with a human present and want the pipeline to clarify unresolved commands, hand off UI verification when Playwright MCP is unavailable, and leave changes unstaged for you to commit.                          |
+| `verifying-implementation`          | Work has observable runtime behavior (a service, DB, UI, queue, job). Gates a "done" claim behind a fresh subagent observing the running system meet its acceptance criteria.                                                             |
+| `enhanced-review`                   | Before merging code, or before implementing a spec/plan. Linus-Torvalds-style review with a five-why reflection so every verdict is evidence-backed.                                                                                      |
+| `explain-changes`                   | You want a self-contained HTML report explaining a diff/branch or an existing feature/module before reviewing it, ending in a self-check quiz. Also auto-invoked, non-blocking, at the end of `autonomous-feature-development`'s Stage 4. |
 
 ## Prerequisites
 
@@ -30,11 +31,11 @@ This plugin depends on capabilities it does **not** bundle. Claude Code has no
 automatic plugin dependency resolution, so you must install these yourself before
 use. If a dependency is missing, the relevant skill will stop and tell you.
 
-| Dependency | Required for | Notes |
-|------------|--------------|-------|
-| [`superpowers`](https://github.com/anthropics/superpowers) plugin | Branch completion (`superpowers:finishing-a-development-branch`) and the verification fallback (`superpowers:verification-before-completion`) | Hard requirement. Install before this plugin. |
-| **playwright MCP** | Tier 3 UI behavior verification in `verifying-implementation` | Bundled in this plugin's `.mcp.json` (`pnpx @playwright/mcp@latest`). Requires `pnpm`/`pnpx` on PATH. Without it, UI verification degrades to the user-confirmation fallback. |
-| [`ponytail`](https://github.com/) plugin (`ponytail:ponytail-review`) | Mode A review stage in `autonomous-feature-development` | Used as one of three parallel reviewers. If absent, that reviewer is skipped. |
+| Dependency                                                            | Required for                                                                                                                                  | Notes                                                                                                                                                                         |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`superpowers`](https://github.com/anthropics/superpowers) plugin     | Branch completion (`superpowers:finishing-a-development-branch`) and the verification fallback (`superpowers:verification-before-completion`) | Hard requirement. Install before this plugin.                                                                                                                                 |
+| **playwright MCP**                                                    | Tier 3 UI behavior verification in `verifying-implementation`                                                                                 | Bundled in this plugin's `.mcp.json` (`pnpx @playwright/mcp@latest`). Requires `pnpm`/`pnpx` on PATH. Without it, UI verification degrades to the user-confirmation fallback. |
+| [`ponytail`](https://github.com/) plugin (`ponytail:ponytail-review`) | Mode A review stage in `autonomous-feature-development`                                                                                       | Used as one of three parallel reviewers. If absent, that reviewer is skipped.                                                                                                 |
 
 The pipeline needs project-local `lint` and `test` commands (with optional
 `format` and `start`). It resolves them at Stage 0 from a `## Commands` section in
