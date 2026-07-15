@@ -92,6 +92,9 @@ Read `./template.html`. Fill it using the JSON payload from Step 4:
   `{{WHY}}` with `why` — all four taken directly from the JSON payload.
   `{{DATE}}` is not part of the JSON payload — fill it with today's date
   (`date -u +%Y-%m-%d`), generated locally at render time.
+- For `{{WHY}}` and `{{SECTION_BODY}}`: split the field's text on blank lines
+  and emit one `<p>...</p>` per paragraph, instead of the template's single
+  `<p>` wrapping the whole field.
 - For each entry in `sections`, duplicate the block between
   `<!-- SECTION:BEGIN -->` and `<!-- SECTION:END -->`, filling
   `{{SECTION_HEADING}}`/`{{SECTION_BODY}}`, and within it duplicate the block

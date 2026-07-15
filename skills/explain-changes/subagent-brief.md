@@ -38,7 +38,6 @@ as your final message. No prose outside the block.
   "mode": "diff-review | explainer",
   "title": "short human-readable title",
   "context_label": "branch/task id (diff-review) or the area described (explainer)",
-  "empty_diff": false,
   "summary": "2-3 sentence overview",
   "why": "the intent/context behind this change or area — 1-3 short paragraphs",
   "sections": [
@@ -68,6 +67,3 @@ as your final message. No prose outside the block.
 - `risks_or_deferred` and `challenges_and_decisions`: return `[]` when the input
   you were given has nothing for that field (e.g. explainer mode, or a loop run
   with no deferred issues) — do not invent content to fill them.
-- `empty_diff`: set `true` only when you were explicitly told the diff is empty;
-  when true, every other field may be minimal (e.g. one section explaining that
-  nothing changed).
