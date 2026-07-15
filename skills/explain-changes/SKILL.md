@@ -13,7 +13,10 @@ and its context (**diff-review** mode) or an existing part of the codebase
 
 - If invoked by `autonomous-feature-development` (the caller states this
   explicitly and supplies `id`, `plan_path`, `spec_path`, `base_sha`): mode is
-  always **diff-review**. Skip to Step 2's "Auto-triggered" row.
+  always **diff-review**. Skip to Step 2's "Auto-triggered" row. (This
+  auto-trigger only fires for runs that reach Stage 4 `stage-final.md`; Mode B
+  runs that exit early via `superpowers:finishing-a-development-branch` never
+  invoke this skill, by design.)
 - Otherwise, infer from the human's request:
   - Mentions a diff / branch / "changes" / "what I just built" → **diff-review**.
   - Names a feature / module / mechanism / workflow, with no diff implied →
@@ -27,7 +30,7 @@ and its context (**diff-review** mode) or an existing part of the codebase
 | Context | Diff scope | Extra inputs |
 | --- | --- | --- |
 | Auto-triggered from the loop | `git diff <base_sha> HEAD` (committed) plus `git diff` (uncommitted) | `plan_path`, `spec_path`, `.loop-logs/<id>/logs/summary.md`, `.loop-logs/<id>/code-review/round-*.md` (if any), `.loop-logs/<id>/error/*.md` (if any), `.loop-logs/<id>/logs/decisions.md` (if present) |
-| Human references a completed loop, no id in conversation | Infer `id`: `grep -l "Branch: <current-branch>" .loop-logs/*/logs/summary.md`, take the most recently modified match, and tell the human which run was picked. Diff scope: `git diff "$(git merge-base <default-branch> HEAD)" HEAD` plus `git diff` (uncommitted) | Same set as above, read from the inferred `id` |
+| Human references a completed loop, no id in conversation | Infer `id`: `grep -l "Branch:.*<current-branch>" .loop-logs/*/logs/summary.md`, take the most recently modified match, and tell the human which run was picked. Diff scope: `git diff "$(git merge-base <default-branch> HEAD)" HEAD` plus `git diff` (uncommitted) | Same set as above, read from the inferred `id` |
 | Human triggers standalone, no loop involved | Ask: "against main, the last commit, or just uncommitted changes?" then diff accordingly | None |
 
 Determine `<default-branch>` via `git symbolic-ref refs/remotes/origin/HEAD`
@@ -74,7 +77,8 @@ Parse the subagent's final message for a single fenced ` ```json ` block
 matching the schema in `subagent-brief.md`. If no valid JSON block is found, or
 the subagent errored:
 
-- Standalone human invocation: print the error and stop. Do not produce a report.
+- Standalone or loop-referencing human invocation: print the error and stop. Do
+  not produce a report.
 - Auto-triggered: print `explain-changes: report generation failed — <reason>`
   and return control to the caller. Do not raise a hard stop — the caller must be
   able to continue regardless (see the integration point in `stage-final.md`).
@@ -115,7 +119,7 @@ Write the filled HTML to the path resolved in Step 3.
 | --- | --- |
 | Empty diff (diff-review) | Report says so plainly (see Step 4). No fabricated content. |
 | Explainer target not found / too vague | Ask the human to narrow it (Step 2). No report produced yet. |
-| Subagent failure, standalone | Surface the error, stop. No report. |
+| Subagent failure, standalone or loop-referencing | Surface the error, stop. No report. |
 | Subagent failure, auto-triggered | Log and return control — never blocks the caller (Step 4). |
 | `.loop-logs/<id>/logs/decisions.md` missing | Omit `challenges_and_decisions` (empty array) — not an error. |
 | Ambiguous mode | Ask which mode was meant (Step 1). |
