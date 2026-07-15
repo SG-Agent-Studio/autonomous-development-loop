@@ -43,6 +43,53 @@ Write `.loop-logs/<id>/logs/summary.md`:
 <list each deferred minor from the final review round, or "none">
 ```
 
+## Step 4.2a — Write decisions log
+
+Write `.loop-logs/<id>/logs/decisions.md`, consolidating:
+
+- Every `### Key Decisions` bullet from every attempt in every
+  `.loop-logs/<id>/logs/<task-id>.md`
+- The root cause from any failed attempt (`Outcome: failed — <root cause>`), even
+  if a later attempt on the same task succeeded
+- Each fixed issue's Phase 1 root-cause/plan from every
+  `.loop-logs/<id>/code-review/round-*.md`
+
+```markdown
+# Decisions & Challenges — <id>
+
+## <task-id>
+
+### Key decisions
+- <bullet from Key Decisions, attempt N>
+
+### Challenges faced
+- Attempt <N> failed: <root cause>
+```
+
+If a task has no `### Key Decisions` in any attempt, omit its "Key decisions"
+subsection. If every attempt on a task succeeded on the first try, omit its
+"Challenges faced" subsection. Repeat the `## <task-id>` block once per task. If
+the review loop fixed zero issues, omit the trailing "## Review fixes" section
+below; otherwise append it:
+
+```markdown
+## Review fixes
+
+- <issue-id>: <root cause/plan from Phase 1>
+```
+
+## Step 4.2b — Generate reviewer report
+
+Invoke the `explain-changes` skill in diff-review mode, passing: `id`,
+`plan_path`, `spec_path`, `base_sha` (recorded in `stage-impl.md` Step 0.3), and
+the paths written above (`summary.md`, `decisions.md`, any
+`code-review/round-*.md`, any `error/*.md`). Output goes to
+`.loop-logs/<id>/reports/`.
+
+This step must never block the pipeline: if `explain-changes` is unavailable,
+errors, or does not produce a file, print one line noting the failure and
+continue to Step 4.3 regardless.
+
 ## Step 4.3 — Commit or hand off
 
 **`interaction_mode == autonomous`:** stage everything (`git add -A`) and commit.
