@@ -161,10 +161,12 @@ one worktree per issue:
 git worktree add .worktrees/fix-<issue-id> -b worktree/fix-<issue-id>
 ```
 
-### Per-Issue Fix Pipeline
+### Per-Issue Fix Pipeline (severity-gated)
 
 Use **separate single-responsibility agents per phase** — the agent that implements a
-fix is never the agent that reviews it:
+fix is never the agent that reviews it. Phase count depends on the issue's severity.
+
+**`blocking` issues — full 5-phase pipeline:**
 
 - **Phase 1 — Plan** (Planner agent): root cause + a concrete 3–5 bullet plan.
 - **Phase 2 — Review plan** (enhanced-review agent): if issues → back to Phase 1 with
@@ -176,6 +178,18 @@ fix is never the agent that reviews it:
   if issues → back to Phase 3; repeat until approved.
 - **Phase 5 — Verify** (Implementer agent): `<lint_cmd>` + `<test_cmd>` one final
   time; mark resolved. The orchestrator never runs lint/test itself.
+
+**`important` issues — collapsed 3-phase pipeline (no plan-approval gate):**
+
+- **Phase 1 — Implement** (Implementer agent): TDD — write failing test, confirm it
+  fails for the expected reason, write minimal implementation, then `<lint_cmd>` and
+  `<test_cmd>` both exit 0. Commit `fix(<scope>): <issue description>`.
+- **Phase 2 — Review** (enhanced-review agent): review the code change; if issues →
+  back to Phase 1; repeat until approved.
+- **Phase 3 — Verify** (Implementer agent): `<lint_cmd>` + `<test_cmd>` one final
+  time; mark resolved. The orchestrator never runs lint/test itself.
+
+`minor` issues are never fixed in-loop, regardless of pipeline — see Loop Control.
 
 ### Squash-merge each fix (orchestrator)
 
