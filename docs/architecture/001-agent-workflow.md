@@ -131,15 +131,13 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    R0([REVIEW step]) --> PAR[orchestrator spawns 3 reviewers\nin parallel — Sonnet 1m each]
+    R0([REVIEW step]) --> DIFF[orchestrator computes diff size\ngit diff --stat base_sha..HEAD]
+    DIFF --> TIER{>3000 lines\nor >20 files?}
+    TIER -->|yes| M1[model = Sonnet 1m]
+    TIER -->|no| M2[model = Sonnet]
+    M1 & M2 --> REV[orchestrator spawns 1 reviewer agent\napplies enhanced-review + simplify\n+ ponytail-review if installed\nself-dedupes, evidence-checks, tags severity]
 
-    PAR --> RA[Reviewer A\nenhanced-review]
-    PAR --> RB[Reviewer B\nponytail-review\nif installed]
-    PAR --> RC[Reviewer C\nsimplify]
-
-    RA & RB & RC --> CONS[consolidation agent:\nverify real + evidence-backed\ndeduplicate, assign severity]
-
-    CONS --> WRITE[orchestrator writes\ncode-review/round-N.md]
+    REV --> WRITE[orchestrator writes\ncode-review/round-N.md]
     WRITE --> AQ{actionable\nblocking + important\n== 0?}
     AQ -->|yes — review clean| BACK([→ Loop Control: exit])
     AQ -->|no| FIXPAR[fix actionable issues\nin parallel worktrees]
@@ -148,7 +146,8 @@ flowchart TD
     FIXPAR --> FI2[Issue fix worktree 2]
     FIXPAR --> FIN[Issue fix worktree N]
 
-    FI1 --> PH1[Phase 1: Planner agent\nroot cause + plan]
+    FI1 --> SEV{severity?}
+    SEV -->|blocking| PH1[Phase 1: Planner agent\nroot cause + plan]
     PH1 --> PH2[Phase 2: enhanced-review agent\nreview plan]
     PH2 --> PH2OK{plan\napproved?}
     PH2OK -->|no| PH1
@@ -159,8 +158,15 @@ flowchart TD
     PH4OK -->|yes| PH5[Phase 5: Implementer agent\nverify: lint_cmd + test_cmd]
     PH5 --> SMF[squash merge fix\ninto branch]
 
-    FI2 -.->|same phases| SMF
-    FIN -.->|same phases| SMF
+    SEV -->|important| IH1[Phase 1: Implementer agent\nTDD: test → impl → lint + test]
+    IH1 --> IH2[Phase 2: enhanced-review agent\nreview code]
+    IH2 --> IH2OK{code\napproved?}
+    IH2OK -->|no| IH1
+    IH2OK -->|yes| IH3[Phase 3: Implementer agent\nverify: lint_cmd + test_cmd]
+    IH3 --> SMF
+
+    FI2 -.->|same, by severity| SMF
+    FIN -.->|same, by severity| SMF
 
     SMF --> RELOOP([→ Loop Control: re-verify\nbefore next review])
 ```
