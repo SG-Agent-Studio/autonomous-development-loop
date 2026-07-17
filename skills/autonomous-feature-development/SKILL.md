@@ -15,9 +15,7 @@ user to install it** (see the plugin README) rather than failing silently:
 
 - **`superpowers`** (required) — used for branch completion
   (`superpowers:finishing-a-development-branch`).
-- **`ponytail`** (optional) — used as one of three parallel reviewers in Stage 3
-  Mode A (`ponytail:ponytail-review`). If absent, skip that reviewer and proceed
-  with the remaining two.
+- **`ponytail`** (optional) — `ponytail:ponytail-review` is one of the skills the single Stage 3 review agent applies. If absent, skip that skill and proceed with the remaining ones.
 - **playwright MCP** — required for UI verification when `interaction_mode ==
   autonomous` (bundled in this plugin's `.mcp.json`). When `human-in-loop`, MCP is
   optional: if absent, UI verification degrades to a human checklist handoff (see
@@ -72,7 +70,7 @@ Read and execute each stage file in order:
 | Stage | File                    | Description                                                                                                                                                                                                                                                                                        |
 | ----- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0 + 1 | `./stage-impl.md`       | Guard/setup, compute run `id`, parallel worktree implementation                                                                                                                                                                                                                                    |
-| 2 + 3 | `./stage-review-fix.md` | **Capped verify↔review loop** (≤5 iterations): each iteration runs the VERIFY step in `./stage-verify.md`, then spawns fresh reviewers + consolidator, writes a code-review log, fixes actionable (blocking+important) issues, and re-verifies. Exits when a review raises zero actionable issues. |
+| 2 + 3 | `./stage-review-fix.md` | **Capped verify↔review loop** (≤5 iterations): each iteration runs the VERIFY step in `./stage-verify.md`, then spawns a single multi-skill review agent, writes a code-review log, fixes actionable (blocking+important) issues via a severity-gated pipeline, and re-verifies. Exits when a review raises zero actionable issues. |
 | 4     | `./stage-final.md`      | Lint, format, summary, final commit                                                                                                                                                                                                                                                                |
 
 **Run `id`:** computed once in Stage 0 (`stage-impl.md` Step 0.2); all logs live under
