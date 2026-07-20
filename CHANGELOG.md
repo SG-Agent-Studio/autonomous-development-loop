@@ -5,6 +5,10 @@ All notable changes to this plugin are documented here. This project follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `explain-changes` HTML report: quiz block and badge labels now use dark backgrounds in dark mode, preventing near-white boxes from rendering over a dark page background.
+
 ### Changed
 
 - `autonomous-feature-development` Stage 3 REVIEW step now spawns a single review agent that applies every installed review skill (`enhanced-review`, `simplify`, `ponytail-review` if installed) instead of 3 separate reviewer agents plus a consolidation agent, cutting per-iteration review cost. The reviewer agent's model tier (`Sonnet` vs `Sonnet[1m]`) is now chosen from the diff size instead of being fixed. The per-issue fix pipeline is now severity-gated: `blocking` issues keep the full 5-phase pipeline, `important` issues collapse to a 3-phase pipeline without a separate plan-approval gate.
