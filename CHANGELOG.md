@@ -3,7 +3,11 @@
 All notable changes to this plugin are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.1] - 2026-07-20
+
+### Fixed
+
+- `explain-changes` HTML report: quiz block and badge labels now use dark backgrounds in dark mode, preventing near-white boxes from rendering over a dark page background.
 
 ### Changed
 
