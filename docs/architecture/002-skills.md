@@ -31,10 +31,10 @@ flowchart TD
     HIL -->|sets interaction_mode = human-in-loop| AFD
 
     AFD -->|loop: VERIFY step verifier subagent| VI
-    AFD -->|loop: REVIEW Reviewer A| ER
-    AFD -->|loop: REVIEW Reviewer B| PT
-    AFD -->|loop: REVIEW Reviewer C| SM
-    AFD -->|loop: per-issue plan + code review| ER
+    AFD -->|loop: REVIEW agent applies skill| ER
+    AFD -->|loop: REVIEW agent applies skill, if installed| PT
+    AFD -->|loop: REVIEW agent applies skill| SM
+    AFD -->|loop: per-issue fix review, severity-gated| ER
     AFD -->|Stage 4 branch completion| SP
     AFD -->|Stage 4 reviewer report, non-blocking| EC
 
@@ -48,7 +48,7 @@ human-triggered only, and touches logs/worktrees/branches, never product code.
 **Required external plugins:**
 
 - `superpowers` — used by `autonomous-feature-development` (Stage 4) and `verifying-implementation` (fallback). Install before invoking either skill.
-- `ponytail` — used by `autonomous-feature-development` Stage 3 Reviewer B. Optional; skipped if absent.
+- `ponytail` — one of the skills the single Stage 3 review agent applies. Optional; skipped if absent.
 
 ---
 
@@ -77,7 +77,7 @@ is namespaced by a single `id` computed in Stage 0; all logs live under
 | `SKILL.md`            | Mode selection, run `id`, prerequisites, hard rules (incl. orchestrator purity)                                         |
 | `stage-impl.md`       | Stage 0 (guard/setup, compute `id`) + Stage 1 (parallel TDD worktrees)                                                  |
 | `stage-verify.md`     | Loop VERIFY step: orchestrator spawns a verifier subagent (structured pass/fail), fixes via subagents, ≤3 inner rounds  |
-| `stage-review-fix.md` | Loop control + Stage 3 REVIEW (spawn reviewers, consolidate, write `code-review/round-<N>.md`, parallel fix) + Mode B entry |
+| `stage-review-fix.md` | Loop control + Stage 3 REVIEW (spawn a single multi-skill review agent, write `code-review/round-<N>.md`, severity-gated parallel fix) + Mode B entry |
 | `stage-final.md`      | Stage 4 (lint/format, summary with loop iterations + deferred minors, decisions log, reviewer report, commit, branch completion) |
 | `log-schema.md`       | Single source of truth for the task log format                                                                          |
 | `log-sample.md`       | Two-attempt example for agents writing task logs                                                                        |
@@ -113,7 +113,7 @@ autonomous.
 acceptance criteria it lacked the capability to check, `human-in-loop` writes a human
 checklist and records `last_outcome: "awaiting_human"` in
 `.loop-logs/<id>/tasks/verification-state.json`. The Stage 2 Clearance Gate at the top
-of the review step admits reviewers only when `last_outcome == "pass"`, so a missing,
+of the review step admits the review agent only when `last_outcome == "pass"`, so a missing,
 stale, or `awaiting_human` state file halts the pipeline. The gate fails closed.
 
 | Juncture | `autonomous` | `human-in-loop` |
@@ -157,7 +157,7 @@ Linus-style review with an evidence-first discipline: no verdict before five-why
 | `references/output-format.md`       | Review output structure                         |
 | `references/examples.md`            | Good/bad taste illustrations                    |
 
-**Used internally by:** `autonomous-feature-development` loop REVIEW step (parallel reviewer + per-issue plan/code review phases). Each invocation runs in its own single-responsibility subagent, distinct from the agent that implemented the change.
+**Used internally by:** `autonomous-feature-development` loop REVIEW step (one of the skills the single review agent applies) and the per-issue fix pipeline's review phase(s) — `blocking` issues get a plan-review gate and a code-review gate; `important` issues get a code-review gate only. Each invocation runs in its own single-responsibility subagent, distinct from the agent that implemented the change.
 
 ---
 

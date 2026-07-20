@@ -29,8 +29,8 @@ LOOP:
      last_outcome == "awaiting_human"): STOP. Do NOT run REVIEW. End the turn.
      Resume at "Resume after human verification" in ./stage-verify.md, which
      re-enters this iteration without incrementing `iteration`.
-  2. REVIEW  — run the Stage 2 Clearance Gate below, then Part 1: spawn reviewers +
-     consolidator, then write .loop-logs/<id>/code-review/round-<iteration>.md.
+  2. REVIEW  — run the Stage 2 Clearance Gate below, then Part 1: spawn the review
+     agent, then write .loop-logs/<id>/code-review/round-<iteration>.md.
   3. If actionable count == 0:  exit LOOP → "After the Loop".
   4. If iteration == 5:  cap reached → write .loop-logs/<id>/error/review-loop-exhausted.md,
      commit wip:, exit LOOP → "After the Loop".
@@ -86,52 +86,57 @@ STOP — Stage 2 Clearance Gate failed.
 verification-state.json last_outcome = <value, or "file missing">
 Expected: "pass"
 
-Stage 2 is not cleared. Reviewers were NOT spawned.
+Stage 2 is not cleared. The review agent was NOT spawned.
 If last_outcome is "awaiting_human", the run is waiting on the checklist at
 <checklist_path> — resume at "Resume after human verification" in ./stage-verify.md.
 ```
 
 Then end the turn. Do not advance to Stage 3 or Stage 4.
 
-### Spawn fresh reviewers
+### Spawn the review agent
 
-The orchestrator spawns 3 reviewer subagents **in parallel** (Sonnet[1m] each). Each
-reviews independently and returns raw findings:
+**Model-tier decision (orchestrator git plumbing, no subagent):**
 
-| Agent      | Skill                                                                |
-| ---------- | -------------------------------------------------------------------- |
-| Reviewer A | `enhanced-review`                                                    |
-| Reviewer B | `ponytail:ponytail-review` (skip if `ponytail` plugin not installed) |
-| Reviewer C | `simplify`                                                           |
+```bash
+git diff --stat <base_sha>..HEAD
+```
 
-The orchestrator passes all raw findings to a **consolidation agent**, which:
+If total changed lines > 3000, OR files changed > 20: use `Sonnet[1m]` for the
+reviewer agent below. Otherwise: use standard Sonnet.
 
-1. Verifies each issue is real and evidence-backed (not hypothetical).
-2. Deduplicates overlapping findings.
-3. Returns a validated issue list, each tagged severity blocking / important / minor.
+The orchestrator spawns one reviewer agent (at the resolved model tier) against
+the full cumulative diff (`<base_sha>..HEAD`). It applies every installed review
+skill against that same diff read:
+
+| Skill                      | Always applied?                                                                     |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| `enhanced-review`          | yes                                                                                 |
+| `simplify`                 | yes                                                                                 |
+| `ponytail:ponytail-review` | only if the `ponytail` plugin is installed — skip this skill (not the whole review) if absent |
+
+The agent:
+
+1. Applies each skill above against the same diff read.
+2. self-dedupes overlapping findings surfaced under different skill lenses.
+3. Verifies each surviving finding is evidence-backed (file:line, not hypothetical)
+   before including it.
+4. Tags each finding with severity: `blocking` / `important` / `minor`.
+5. Returns the final issue table directly. There is no separate consolidation step — the reviewer's own output is the log's "Findings" section verbatim.
 
 ### Orchestrator writes the code-review log
 
-The orchestrator (NOT the consolidator) writes
-`.loop-logs/<id>/code-review/round-<iteration>.md`:
+The orchestrator (NOT the reviewer agent) writes
+`.loop-logs/<id>/code-review/round-<iteration>.md`, using the reviewer's output
+directly — there is no separate consolidation step to derive it from:
 
 ```markdown
 # Code Review — Round <iteration>
 
 **Timestamp:** <ISO>
 **Loop iteration:** <iteration> of ≤5
+**Model tier:** <Sonnet | Sonnet[1m]> (diff: <N> lines / <M> files changed)
 
-## Raw findings
-
-### Reviewer A — enhanced-review
-
-<raw>
-### Reviewer B — ponytail
-<raw, or: skipped — plugin not installed>
-### Reviewer C — simplify
-<raw>
-
-## Consolidated issues
+## Findings
 
 | ID  | Severity                 | Summary | Evidence (file:line) |
 | --- | ------------------------ | ------- | -------------------- |
@@ -156,10 +161,12 @@ one worktree per issue:
 git worktree add .worktrees/fix-<issue-id> -b worktree/fix-<issue-id>
 ```
 
-### Per-Issue Fix Pipeline
+### Per-Issue Fix Pipeline (severity-gated)
 
 Use **separate single-responsibility agents per phase** — the agent that implements a
-fix is never the agent that reviews it:
+fix is never the agent that reviews it. Phase count depends on the issue's severity.
+
+**`blocking` issues — full 5-phase pipeline:**
 
 - **Phase 1 — Plan** (Planner agent): root cause + a concrete 3–5 bullet plan.
 - **Phase 2 — Review plan** (enhanced-review agent): if issues → back to Phase 1 with
@@ -171,6 +178,18 @@ fix is never the agent that reviews it:
   if issues → back to Phase 3; repeat until approved.
 - **Phase 5 — Verify** (Implementer agent): `<lint_cmd>` + `<test_cmd>` one final
   time; mark resolved. The orchestrator never runs lint/test itself.
+
+**`important` issues — collapsed 3-phase pipeline (no plan-approval gate):**
+
+- **Phase 1 — Implement** (Implementer agent): TDD — write failing test, confirm it
+  fails for the expected reason, write minimal implementation, then `<lint_cmd>` and
+  `<test_cmd>` both exit 0. Commit `fix(<scope>): <issue description>`.
+- **Phase 2 — Review** (enhanced-review agent): review the code change; if issues →
+  back to Phase 1; repeat until approved.
+- **Phase 3 — Verify** (Implementer agent): `<lint_cmd>` + `<test_cmd>` one final
+  time; mark resolved. The orchestrator never runs lint/test itself.
+
+`minor` issues are never fixed in-loop, regardless of pipeline — see Loop Control.
 
 ### Squash-merge each fix (orchestrator)
 
