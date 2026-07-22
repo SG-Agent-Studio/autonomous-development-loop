@@ -45,6 +45,7 @@ Read `plan_path`. Extract every heading matching `### Task N: <name>` (N = a num
 - Derive `task_id`: `task-<N>-<kebab-case-name>`
   - Example: `### Task 3: Tavily Service` → `task-3-tavily-service`
 - Record line range (from this heading to next `### Task` heading or end of file)
+- Capture the **raw text** of the task section (from `### Task N: <name>` through the last line before the next `### Task` heading or EOF) and store it in memory as `task_sections[task_id]`
 
 ### Step 0.5 — Initialize task files
 
@@ -127,7 +128,7 @@ Check whether the bundled Playwright MCP tools are available → `mcp_available`
 Record `mcp_available` and inject it into the verifier subagent prompt. It is the
 verifier's **only** capability input — never inject `interaction_mode` into any
 subagent. The verifier reports blocked criteria as facts; the orchestrator alone
-translates them into mode policy (see `stage-verify.md`). Mode B has no `spec_path` —
+translates them into mode policy (see § Verifier Subagent Contract in `stage-review-fix.md`). Mode B has no `spec_path` —
 skip the AC-scan; the verify-time per-AC backstop still applies.
 
 ---
@@ -150,9 +151,10 @@ File writes are split by owner:
 Before calling each per-task agent, the orchestrator:
 
 1. Writes `{ "status": "in_progress", "worktree": ".worktrees/<task-id>" }` into `.loop-logs/<id>/tasks/<task-id>.json` (merging with the existing fields from Stage 0).
-2. Computes the absolute repo root path (e.g. via `git rev-parse --show-toplevel`) and injects two paths into the agent's prompt:
+2. Computes the absolute repo root path (e.g. via `git rev-parse --show-toplevel`) and injects into the agent's prompt:
    - `LOG_PATH`: `<absolute-repo-root>/.loop-logs/<id>/logs/<task-id>.md`
    - `ERROR_LOG_PATH`: `<absolute-repo-root>/.loop-logs/<id>/error/<task-id>.md`
+   - `TASK_SECTION`: the raw task section text from `task_sections[task_id]` (captured in Step 0.4), injected verbatim including the `### Task N: <name>` heading
 
 After the agent returns, the orchestrator writes the final task state from the agent's structured output (see schema below).
 
@@ -223,14 +225,16 @@ Update task JSON: `"status": "in_progress"`, `"worktree": ".worktrees/<task-id>"
 
 #### Agent Step C — Read task content and write Task Header
 
-From `plan_path`, read the full section for this task (from `### Task N: <name>` to next `### Task` heading or end of file). Also read full `spec_path` for architectural context.
+Your task section is provided verbatim in the `TASK_SECTION` variable injected into
+this prompt — do **not** open `plan_path`. Read `spec_path` only for sections
+relevant to your task; do not read the entire file.
 
 Read both log reference documents:
 - `skills/autonomous-feature-development/log-schema.md`
 - `skills/autonomous-feature-development/log-sample.md`
 
 Write the **Task Header** (Tier 1 from `log-schema.md`) to `LOG_PATH` now, before any attempt begins:
-- Copy the full plan section verbatim
+- Copy the task section from `TASK_SECTION` verbatim
 - Extract and list ACs (omit `### Acceptance Criteria` section if none are listed)
 
 #### Agent Step D — TDD loop (max 3 attempts)
