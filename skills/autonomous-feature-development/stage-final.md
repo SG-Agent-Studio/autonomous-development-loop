@@ -78,21 +78,6 @@ below; otherwise append it:
 - <issue-id>: <root cause/plan from Phase 1>
 ```
 
-## Step 4.2b — Generate reviewer report
-
-Invoke the `explain-changes` skill in diff-review mode, passing: `id`,
-`plan_path`, `spec_path`, `base_sha` (recorded in `stage-impl.md` Step 0.3), and
-the paths written above (`summary.md`, `decisions.md`, any
-`code-review/round-*.md`, any `error/*.md`). Output goes to
-`.loop-logs/<id>/reports/`.
-
-Capture what it returns — `Report generated: <path>` on success, or the failure
-line — as `<report_path>` for Step 4.3 (empty if it failed).
-
-This step must never block the pipeline: if `explain-changes` is unavailable,
-errors, or does not produce a file, print one line noting the failure and
-continue to Step 4.3 regardless.
-
 ## Step 4.3 — Commit or hand off
 
 **`interaction_mode == autonomous`:** stage everything (`git add -A`) and commit.
@@ -120,11 +105,7 @@ Confirm `git status` shows unstaged changes and `git log` shows no new commits s
 ```
 Implementation complete. All changes are unstaged on <branch> — review and commit manually.
 Summary: .loop-logs/<id>/logs/summary.md
-Report: <report_path from Step 4.2b>
 ```
-
-Include the `Report:` line only if Step 4.2b produced a path; omit it entirely if
-`explain-changes` failed or was unavailable.
 
 Then stop.
 
