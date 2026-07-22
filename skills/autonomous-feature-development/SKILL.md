@@ -19,11 +19,7 @@ user to install it** (see the plugin README) rather than failing silently:
 - **playwright MCP** — required for UI verification when `interaction_mode ==
   autonomous` (bundled in this plugin's `.mcp.json`). When `human-in-loop`, MCP is
   optional: if absent, UI verification degrades to a human checklist handoff (see
-  `stage-verify.md`).
-- **`explain-changes`** (optional) — generates a reviewer-facing HTML report at
-  the end of Stage 4 (`stage-final.md` Step 4.2b). If absent, or if it fails,
-  skip it and proceed to commit/handoff — report generation never blocks the
-  pipeline.
+  § Verifier Subagent Contract in `stage-review-fix.md`).
 
 ## Mode Selection
 
@@ -70,7 +66,7 @@ Read and execute each stage file in order:
 | Stage | File                    | Description                                                                                                                                                                                                                                                                                        |
 | ----- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0 + 1 | `./stage-impl.md`       | Guard/setup, compute run `id`, parallel worktree implementation                                                                                                                                                                                                                                    |
-| 2 + 3 | `./stage-review-fix.md` | **Capped verify↔review loop** (≤5 iterations): each iteration runs the VERIFY step in `./stage-verify.md`, then spawns a single multi-skill review agent, writes a code-review log, fixes actionable (blocking+important) issues via a severity-gated pipeline, and re-verifies. Exits when a review raises zero actionable issues. |
+| 2 + 3 | `./stage-review-fix.md` | **Capped verify↔review loop** (≤5 iterations): each iteration runs the VERIFY step (verifier contract defined inline in `./stage-review-fix.md`), spawns a single multi-skill review agent, writes a code-review log, fixes all actionable (blocking+important) issues via a single fix-all agent, and re-verifies. Exits when a review raises zero actionable issues. |
 | 4     | `./stage-final.md`      | Lint, format, summary, final commit                                                                                                                                                                                                                                                                |
 
 **Run `id`:** computed once in Stage 0 (`stage-impl.md` Step 0.2); all logs live under

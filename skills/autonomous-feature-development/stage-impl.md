@@ -35,8 +35,7 @@ Run: `git rev-parse --abbrev-ref HEAD`
 - Otherwise: continue on current branch.
 
 Record `base_sha` = output of `git rev-parse HEAD` — the branch tip before any task
-work. Used by the human-in-loop commit handoff (`stage-final.md` Step 4.3) and
-the `explain-changes` reviewer-report invocation (`stage-final.md` Step 4.2b).
+work. Used by the human-in-loop commit handoff (`stage-final.md` Step 4.3).
 
 ### Step 0.4 — Parse tasks
 
