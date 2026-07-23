@@ -27,11 +27,11 @@ and its context (**diff-review** mode) or an existing part of the codebase
 
 ### diff-review mode
 
-| Context | Diff scope | Extra inputs |
-| --- | --- | --- |
-| Auto-triggered from the loop | `git diff <base_sha> HEAD` (committed) plus `git diff` (uncommitted) | `plan_path`, `spec_path`, `.loop-logs/<id>/logs/summary.md`, `.loop-logs/<id>/code-review/round-*.md` (if any), `.loop-logs/<id>/error/*.md` (if any), `.loop-logs/<id>/logs/decisions.md` (if present) |
-| Human references a completed loop, no id in conversation | Infer `id`: `grep -l "Branch:.*<current-branch>" .loop-logs/*/logs/summary.md`, take the most recently modified match, and tell the human which run was picked. Diff scope: `git diff "$(git merge-base <default-branch> HEAD)" HEAD` plus `git diff` (uncommitted) | Same set as above, read from the inferred `id` |
-| Human triggers standalone, no loop involved | Ask: "against main, the last commit, or just uncommitted changes?" then diff accordingly | None |
+| Context                                                  | Diff scope                                                                                                                                                                                                                                                          | Extra inputs                                                                                                                                                                                            |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auto-triggered from the loop                             | `git diff <base_sha> HEAD` (committed) plus `git diff` (uncommitted)                                                                                                                                                                                                | `plan_path`, `spec_path`, `.loop-logs/<id>/logs/summary.md`, `.loop-logs/<id>/code-review/round-*.md` (if any), `.loop-logs/<id>/error/*.md` (if any), `.loop-logs/<id>/logs/decisions.md` (if present) |
+| Human references a completed loop, no id in conversation | Infer `id`: `grep -l "Branch:.*<current-branch>" .loop-logs/*/logs/summary.md`, take the most recently modified match, and tell the human which run was picked. Diff scope: `git diff "$(git merge-base <default-branch> HEAD)" HEAD` plus `git diff` (uncommitted) | Same set as above, read from the inferred `id`                                                                                                                                                          |
+| Human triggers standalone, no loop involved              | Ask: "against main, the last commit, or just uncommitted changes?" then diff accordingly                                                                                                                                                                            | None                                                                                                                                                                                                    |
 
 Determine `<default-branch>` via `git symbolic-ref refs/remotes/origin/HEAD`
 (fall back to `main` if that fails).
@@ -47,11 +47,11 @@ the human to narrow it rather than guessing across the whole repo.
 
 ## Step 3 — Resolve output path
 
-| Trigger | Output directory |
-| --- | --- |
-| Human triggers standalone (no loop mentioned) | `<repo-root>/temp/` |
-| Human triggers referencing a completed loop | `.loop-logs/<id>/reports/` |
-| Auto-triggered from the loop | `.loop-logs/<id>/reports/` |
+| Trigger                                       | Output directory           |
+| --------------------------------------------- | -------------------------- |
+| Human triggers standalone (no loop mentioned) | `<repo-root>/temp/`        |
+| Human triggers referencing a completed loop   | `.loop-logs/<id>/reports/` |
+| Auto-triggered from the loop                  | `.loop-logs/<id>/reports/` |
 
 `mkdir -p` the directory. Filename: `<TIMESTAMP>-<MODE>-<SLUG>.html`, where
 `<TIMESTAMP>` is `date -u +%Y-%m-%dT%H%M` (UTC), `<MODE>` is `diff-review` or
@@ -85,29 +85,7 @@ the subagent errored:
 
 ## Step 5 — Render the report
 
-Read `./template.html`. Fill it using the JSON payload from Step 4:
-
-- Replace `{{TITLE}}` with `title`, `{{MODE_LABEL}}` with `mode`,
-  `{{CONTEXT_LABEL}}` with `context_label`, `{{SUMMARY}}` with `summary`, and
-  `{{WHY}}` with `why` — all four taken directly from the JSON payload.
-  `{{DATE}}` is not part of the JSON payload — fill it with today's date
-  (`date -u +%Y-%m-%d`), generated locally at render time.
-- For `{{WHY}}` and `{{SECTION_BODY}}`: split the field's text on blank lines
-  and emit one `<p>...</p>` per paragraph, instead of the template's single
-  `<p>` wrapping the whole field.
-- For each entry in `sections`, duplicate the block between
-  `<!-- SECTION:BEGIN -->` and `<!-- SECTION:END -->`, filling
-  `{{SECTION_HEADING}}`/`{{SECTION_BODY}}`, and within it duplicate the block
-  between `<!-- QUIZ_ITEM:BEGIN -->`/`<!-- QUIZ_ITEM:END -->` once per quiz
-  question.
-- If `challenges_and_decisions` is non-empty, keep the block between
-  `<!-- CHALLENGES:BEGIN -->`/`<!-- CHALLENGES:END -->` and duplicate its `<li>`
-  once per entry; otherwise delete that whole block. Same rule for
-  `risks_or_deferred` and the `<!-- RISKS:BEGIN -->`/`<!-- RISKS:END -->` block.
-- Remove every `<!-- ...:BEGIN -->` / `<!-- ...:END -->` marker comment from the
-  final output — they exist only to mark the template's repeat boundaries.
-
-Write the filled HTML to the path resolved in Step 3.
+Read `./render-rules.md` and `./template.html`. Apply those rules to fill the template using the Step 4 payload. Write the result to the path resolved in Step 3.
 
 ## Step 6 — Report back
 
@@ -116,13 +94,3 @@ Write the filled HTML to the path resolved in Step 3.
   to the caller — do not print anything else, the caller controls what the human
   sees.
 
-## Error handling
-
-| Case | Behavior |
-| --- | --- |
-| Empty diff (diff-review) | Report says so plainly (see Step 4). No fabricated content. |
-| Explainer target not found / too vague | Ask the human to narrow it (Step 2). No report produced yet. |
-| Subagent failure, standalone or loop-referencing | Surface the error, stop. No report. |
-| Subagent failure, auto-triggered | Log and return control — never blocks the caller (Step 4). |
-| `.loop-logs/<id>/logs/decisions.md` missing | Omit `challenges_and_decisions` (empty array) — not an error. |
-| Ambiguous mode | Ask which mode was meant (Step 1). |
