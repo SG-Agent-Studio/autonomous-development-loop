@@ -85,68 +85,7 @@ the subagent errored:
 
 ## Step 5 — Render the report
 
-Read `./template.html`. Fill it using the JSON payload from Step 4:
-
-**Simple replacements** (taken directly from the JSON payload):
-
-- `{{TITLE}}` → `title`
-- `{{MODE_LABEL}}` → `mode`
-- `{{CONTEXT_LABEL}}` → `context_label`
-- `{{SUMMARY}}` → `summary`
-- `{{DATE}}` → today's date (`date -u +%Y-%m-%d`), generated at render time
-
-**`{{WHY}}` and `{{SECTION_BODY}}`**: split on blank lines; emit one `<p>…</p>` per paragraph.
-
-**`{{STATS_HTML}}`**: for each entry in `stats`, emit:
-`<div class="stat"><div class="n">{{n}}</div><div class="l">{{l}}</div></div>`.
-If `stats` is empty, emit nothing (the `stat-row` div becomes empty).
-
-**Section numbering**: "Why" = 1. Content sections start at 2. Challenges (if present) and Risks (if present) follow. Quiz is always the last section. Track a running counter.
-
-**`{{TOC_ITEMS}}`**: emit one `<li><a href="#{{id}}">{{num}}. {{heading}}</a></li>` per section, in order:
-
-- `#overview` → "Overview" (the hero header — num 0, label "Overview", or skip if you prefer to start TOC at Why)
-- `#why` → "Why" (num 1)
-- One entry per `sections[]` entry: id = slugify(heading) (lowercase, spaces→hyphens, strip non-alphanumeric except hyphens), num = running counter
-- `#challenges` → "Challenges & decisions" (if non-empty), with its num
-- `#risks` → "Known risks & deferred" (if non-empty), with its num
-- `#quiz` → "Quiz" with its num
-
-**SECTION:BEGIN/END block**: duplicate once per entry in `sections[]`. Fill:
-
-- `{{SECTION_NUM}}` → section's number in the running counter
-- `{{SECTION_ID}}` → slugified heading
-- `{{SECTION_HEADING}}` → `heading`
-- `{{SECTION_BODY}}` → `body` (split into `<p>` blocks as above)
-
-**CHALLENGES:BEGIN/END block**: keep if `challenges_and_decisions` is non-empty; fill `{{CHALLENGES_NUM}}` with its counter value. Duplicate the `CHALLENGE_ITEM` `<li>` once per entry, filling `{{CHALLENGE_TEXT}}`. Delete the whole block if empty.
-
-**RISKS:BEGIN/END block**: same rule for `risks_or_deferred`, filling `{{RISKS_NUM}}` and `{{RISK_TEXT}}`. Delete the whole block if empty.
-
-**Quiz section** — collect all quiz items from all `sections[]` into a flat ordered list:
-
-- `{{QUIZ_NUM}}` → the quiz's section number
-- `{{QUIZ_TOTAL}}` → total number of quiz questions across all sections
-- `{{QUIZ_PASS_THRESHOLD}}` → `Math.ceil(total * 10 / 12)` (≈83%), minimum 1
-- `{{QUIZ_QUESTIONS_JS}}` → serialize as a JS array literal (not a JSON string):
-
-```
-[
-  {
-    q: "question text",
-    options: ["A", "B", "C", "D"],
-    correct: 1,
-    explain: "explanation"
-  },
-  ...
-]
-```
-
-Use unquoted JS object keys (`q:`, `options:`, `correct:`, `explain:`). Escape any backticks or `${` in string values. Emit the array inline — the template already wraps it in `const QUESTIONS = …;`.
-
-**Cleanup**: remove every `<!-- ...:BEGIN -->` / `<!-- ...:END -->` marker comment from the final output.
-
-Write the filled HTML to the path resolved in Step 3.
+Read `./render-rules.md` and `./template.html`. Apply those rules to fill the template using the Step 4 payload. Write the result to the path resolved in Step 3.
 
 ## Step 6 — Report back
 
@@ -155,13 +94,3 @@ Write the filled HTML to the path resolved in Step 3.
   to the caller — do not print anything else, the caller controls what the human
   sees.
 
-## Error handling
-
-| Case                                             | Behavior                                                      |
-| ------------------------------------------------ | ------------------------------------------------------------- |
-| Empty diff (diff-review)                         | Report says so plainly (see Step 4). No fabricated content.   |
-| Explainer target not found / too vague           | Ask the human to narrow it (Step 2). No report produced yet.  |
-| Subagent failure, standalone or loop-referencing | Surface the error, stop. No report.                           |
-| Subagent failure, auto-triggered                 | Log and return control — never blocks the caller (Step 4).    |
-| `.loop-logs/<id>/logs/decisions.md` missing      | Omit `challenges_and_decisions` (empty array) — not an error. |
-| Ambiguous mode                                   | Ask which mode was meant (Step 1).                            |
