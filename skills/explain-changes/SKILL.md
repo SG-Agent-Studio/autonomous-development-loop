@@ -27,11 +27,11 @@ and its context (**diff-review** mode) or an existing part of the codebase
 
 ### diff-review mode
 
-| Context | Diff scope | Extra inputs |
-| --- | --- | --- |
-| Auto-triggered from the loop | `git diff <base_sha> HEAD` (committed) plus `git diff` (uncommitted) | `plan_path`, `spec_path`, `.loop-logs/<id>/logs/summary.md`, `.loop-logs/<id>/code-review/round-*.md` (if any), `.loop-logs/<id>/error/*.md` (if any), `.loop-logs/<id>/logs/decisions.md` (if present) |
-| Human references a completed loop, no id in conversation | Infer `id`: `grep -l "Branch:.*<current-branch>" .loop-logs/*/logs/summary.md`, take the most recently modified match, and tell the human which run was picked. Diff scope: `git diff "$(git merge-base <default-branch> HEAD)" HEAD` plus `git diff` (uncommitted) | Same set as above, read from the inferred `id` |
-| Human triggers standalone, no loop involved | Ask: "against main, the last commit, or just uncommitted changes?" then diff accordingly | None |
+| Context                                                  | Diff scope                                                                                                                                                                                                                                                          | Extra inputs                                                                                                                                                                                            |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auto-triggered from the loop                             | `git diff <base_sha> HEAD` (committed) plus `git diff` (uncommitted)                                                                                                                                                                                                | `plan_path`, `spec_path`, `.loop-logs/<id>/logs/summary.md`, `.loop-logs/<id>/code-review/round-*.md` (if any), `.loop-logs/<id>/error/*.md` (if any), `.loop-logs/<id>/logs/decisions.md` (if present) |
+| Human references a completed loop, no id in conversation | Infer `id`: `grep -l "Branch:.*<current-branch>" .loop-logs/*/logs/summary.md`, take the most recently modified match, and tell the human which run was picked. Diff scope: `git diff "$(git merge-base <default-branch> HEAD)" HEAD` plus `git diff` (uncommitted) | Same set as above, read from the inferred `id`                                                                                                                                                          |
+| Human triggers standalone, no loop involved              | Ask: "against main, the last commit, or just uncommitted changes?" then diff accordingly                                                                                                                                                                            | None                                                                                                                                                                                                    |
 
 Determine `<default-branch>` via `git symbolic-ref refs/remotes/origin/HEAD`
 (fall back to `main` if that fails).
@@ -47,11 +47,11 @@ the human to narrow it rather than guessing across the whole repo.
 
 ## Step 3 — Resolve output path
 
-| Trigger | Output directory |
-| --- | --- |
-| Human triggers standalone (no loop mentioned) | `<repo-root>/temp/` |
-| Human triggers referencing a completed loop | `.loop-logs/<id>/reports/` |
-| Auto-triggered from the loop | `.loop-logs/<id>/reports/` |
+| Trigger                                       | Output directory           |
+| --------------------------------------------- | -------------------------- |
+| Human triggers standalone (no loop mentioned) | `<repo-root>/temp/`        |
+| Human triggers referencing a completed loop   | `.loop-logs/<id>/reports/` |
+| Auto-triggered from the loop                  | `.loop-logs/<id>/reports/` |
 
 `mkdir -p` the directory. Filename: `<TIMESTAMP>-<MODE>-<SLUG>.html`, where
 `<TIMESTAMP>` is `date -u +%Y-%m-%dT%H%M` (UTC), `<MODE>` is `diff-review` or
@@ -87,25 +87,64 @@ the subagent errored:
 
 Read `./template.html`. Fill it using the JSON payload from Step 4:
 
-- Replace `{{TITLE}}` with `title`, `{{MODE_LABEL}}` with `mode`,
-  `{{CONTEXT_LABEL}}` with `context_label`, `{{SUMMARY}}` with `summary`, and
-  `{{WHY}}` with `why` — all four taken directly from the JSON payload.
-  `{{DATE}}` is not part of the JSON payload — fill it with today's date
-  (`date -u +%Y-%m-%d`), generated locally at render time.
-- For `{{WHY}}` and `{{SECTION_BODY}}`: split the field's text on blank lines
-  and emit one `<p>...</p>` per paragraph, instead of the template's single
-  `<p>` wrapping the whole field.
-- For each entry in `sections`, duplicate the block between
-  `<!-- SECTION:BEGIN -->` and `<!-- SECTION:END -->`, filling
-  `{{SECTION_HEADING}}`/`{{SECTION_BODY}}`, and within it duplicate the block
-  between `<!-- QUIZ_ITEM:BEGIN -->`/`<!-- QUIZ_ITEM:END -->` once per quiz
-  question.
-- If `challenges_and_decisions` is non-empty, keep the block between
-  `<!-- CHALLENGES:BEGIN -->`/`<!-- CHALLENGES:END -->` and duplicate its `<li>`
-  once per entry; otherwise delete that whole block. Same rule for
-  `risks_or_deferred` and the `<!-- RISKS:BEGIN -->`/`<!-- RISKS:END -->` block.
-- Remove every `<!-- ...:BEGIN -->` / `<!-- ...:END -->` marker comment from the
-  final output — they exist only to mark the template's repeat boundaries.
+**Simple replacements** (taken directly from the JSON payload):
+
+- `{{TITLE}}` → `title`
+- `{{MODE_LABEL}}` → `mode`
+- `{{CONTEXT_LABEL}}` → `context_label`
+- `{{SUMMARY}}` → `summary`
+- `{{DATE}}` → today's date (`date -u +%Y-%m-%d`), generated at render time
+
+**`{{WHY}}` and `{{SECTION_BODY}}`**: split on blank lines; emit one `<p>…</p>` per paragraph.
+
+**`{{STATS_HTML}}`**: for each entry in `stats`, emit:
+`<div class="stat"><div class="n">{{n}}</div><div class="l">{{l}}</div></div>`.
+If `stats` is empty, emit nothing (the `stat-row` div becomes empty).
+
+**Section numbering**: "Why" = 1. Content sections start at 2. Challenges (if present) and Risks (if present) follow. Quiz is always the last section. Track a running counter.
+
+**`{{TOC_ITEMS}}`**: emit one `<li><a href="#{{id}}">{{num}}. {{heading}}</a></li>` per section, in order:
+
+- `#overview` → "Overview" (the hero header — num 0, label "Overview", or skip if you prefer to start TOC at Why)
+- `#why` → "Why" (num 1)
+- One entry per `sections[]` entry: id = slugify(heading) (lowercase, spaces→hyphens, strip non-alphanumeric except hyphens), num = running counter
+- `#challenges` → "Challenges & decisions" (if non-empty), with its num
+- `#risks` → "Known risks & deferred" (if non-empty), with its num
+- `#quiz` → "Quiz" with its num
+
+**SECTION:BEGIN/END block**: duplicate once per entry in `sections[]`. Fill:
+
+- `{{SECTION_NUM}}` → section's number in the running counter
+- `{{SECTION_ID}}` → slugified heading
+- `{{SECTION_HEADING}}` → `heading`
+- `{{SECTION_BODY}}` → `body` (split into `<p>` blocks as above)
+
+**CHALLENGES:BEGIN/END block**: keep if `challenges_and_decisions` is non-empty; fill `{{CHALLENGES_NUM}}` with its counter value. Duplicate the `CHALLENGE_ITEM` `<li>` once per entry, filling `{{CHALLENGE_TEXT}}`. Delete the whole block if empty.
+
+**RISKS:BEGIN/END block**: same rule for `risks_or_deferred`, filling `{{RISKS_NUM}}` and `{{RISK_TEXT}}`. Delete the whole block if empty.
+
+**Quiz section** — collect all quiz items from all `sections[]` into a flat ordered list:
+
+- `{{QUIZ_NUM}}` → the quiz's section number
+- `{{QUIZ_TOTAL}}` → total number of quiz questions across all sections
+- `{{QUIZ_PASS_THRESHOLD}}` → `Math.ceil(total * 10 / 12)` (≈83%), minimum 1
+- `{{QUIZ_QUESTIONS_JS}}` → serialize as a JS array literal (not a JSON string):
+
+```
+[
+  {
+    q: "question text",
+    options: ["A", "B", "C", "D"],
+    correct: 1,
+    explain: "explanation"
+  },
+  ...
+]
+```
+
+Use unquoted JS object keys (`q:`, `options:`, `correct:`, `explain:`). Escape any backticks or `${` in string values. Emit the array inline — the template already wraps it in `const QUESTIONS = …;`.
+
+**Cleanup**: remove every `<!-- ...:BEGIN -->` / `<!-- ...:END -->` marker comment from the final output.
 
 Write the filled HTML to the path resolved in Step 3.
 
@@ -118,11 +157,11 @@ Write the filled HTML to the path resolved in Step 3.
 
 ## Error handling
 
-| Case | Behavior |
-| --- | --- |
-| Empty diff (diff-review) | Report says so plainly (see Step 4). No fabricated content. |
-| Explainer target not found / too vague | Ask the human to narrow it (Step 2). No report produced yet. |
-| Subagent failure, standalone or loop-referencing | Surface the error, stop. No report. |
-| Subagent failure, auto-triggered | Log and return control — never blocks the caller (Step 4). |
-| `.loop-logs/<id>/logs/decisions.md` missing | Omit `challenges_and_decisions` (empty array) — not an error. |
-| Ambiguous mode | Ask which mode was meant (Step 1). |
+| Case                                             | Behavior                                                      |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| Empty diff (diff-review)                         | Report says so plainly (see Step 4). No fabricated content.   |
+| Explainer target not found / too vague           | Ask the human to narrow it (Step 2). No report produced yet.  |
+| Subagent failure, standalone or loop-referencing | Surface the error, stop. No report.                           |
+| Subagent failure, auto-triggered                 | Log and return control — never blocks the caller (Step 4).    |
+| `.loop-logs/<id>/logs/decisions.md` missing      | Omit `challenges_and_decisions` (empty array) — not an error. |
+| Ambiguous mode                                   | Ask which mode was meant (Step 1).                            |

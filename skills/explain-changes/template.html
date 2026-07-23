@@ -2,78 +2,284 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{TITLE}}</title>
 <style>
-  :root { color-scheme: light dark; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 780px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }
-  header { border-bottom: 2px solid #ccc; margin-bottom: 1.5rem; padding-bottom: 1rem; }
-  .badge { display: inline-block; background: #eee; border-radius: 4px; padding: 0.15rem 0.5rem; font-size: 0.85rem; margin-right: 0.5rem; }
-  section.area { margin: 2rem 0; padding-top: 1rem; border-top: 1px solid #ddd; }
-  .quiz { background: #f7f7f7; border-radius: 6px; padding: 1rem; margin-top: 1rem; }
-  .quiz details { margin: 0.75rem 0; }
-  .quiz summary { cursor: pointer; font-weight: 600; }
-  .quiz .answer { margin-top: 0.5rem; padding: 0.5rem 0.75rem; background: #fff; border-left: 3px solid #888; }
-  ul.plain li { margin-bottom: 0.5rem; }
-  @media (prefers-color-scheme: dark) {
-    .badge { background: #3a3a3a; }
-    .quiz { background: #2a2a2a; }
-    .quiz .answer { background: #1e1e1e; }
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1c2029;
+    --border: #2a2f3a;
+    --text: #e6e8ee;
+    --text-dim: #9aa3b5;
+    --accent: #6ea8fe;
+    --accent-2: #7ee2b8;
+    --warn: #f5c266;
+    --danger: #f27878;
+    --code-bg: #10131a;
+    --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.6; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .layout { display: flex; max-width: 1280px; margin: 0 auto; }
+  nav.toc {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    width: 240px; flex-shrink: 0; padding: 28px 16px; border-right: 1px solid var(--border);
+  }
+  nav.toc h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin: 0 0 12px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; }
+  nav.toc li { margin-bottom: 8px; }
+  nav.toc a { font-size: 13.5px; color: var(--text-dim); display: block; padding: 4px 8px; border-radius: 6px; }
+  nav.toc a:hover { background: var(--panel-2); color: var(--text); text-decoration: none; }
+  nav.toc .quiz-status {
+    margin-top: 20px; padding: 10px 12px; border-radius: 8px; font-size: 12.5px;
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text-dim);
+  }
+  nav.toc .quiz-status.passed { border-color: var(--accent-2); color: var(--accent-2); }
+
+  main { flex: 1; padding: 40px 56px 100px; min-width: 0; }
+
+  header.hero {
+    padding: 28px 32px; border-radius: 16px; margin-bottom: 40px;
+    background: linear-gradient(135deg, #1a2540 0%, #161922 60%);
+    border: 1px solid var(--border);
+  }
+  header.hero .eyebrow { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-weight: 600; }
+  header.hero h1 { font-size: 28px; margin: 8px 0 6px; }
+  header.hero p.sub { color: var(--text-dim); margin: 0 0 18px; font-size: 15px; }
+  .stat-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; min-width: 108px; }
+  .stat .n { font-size: 22px; font-weight: 700; color: var(--accent-2); }
+  .stat .l { font-size: 11.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; }
+
+  section { margin-bottom: 48px; }
+  h2 { font-size: 21px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-top: 0; }
+  h2 .num { color: var(--accent); margin-right: 8px; }
+  h3 { font-size: 16px; margin-top: 24px; color: var(--text); }
+  p { color: #d3d7e0; }
+  .lead { font-size: 16px; color: var(--text); }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin: 14px 0; }
+  .card.callout-why { border-left: 3px solid var(--accent); }
+  .card.callout-gotcha { border-left: 3px solid var(--warn); }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto; font-size: 12.8px; line-height: 1.55;
+  }
+  code { font-family: var(--mono); }
+  p code, li code, td code { background: var(--code-bg); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; border: 1px solid var(--border); }
+  pre code { background: none; border: none; padding: 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  ul.plain { padding-left: 1.2rem; }
+  ul.plain li { margin-bottom: 6px; color: #d3d7e0; font-size: 14px; }
+
+  footer.report-footer { color: var(--text-dim); font-size: 12.5px; border-top: 1px solid var(--border); padding-top: 18px; margin-top: 60px; }
+
+  /* Quiz */
+  #quiz .q-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 22px; margin-bottom: 18px;
+  }
+  #quiz .q-title { font-weight: 600; margin-bottom: 12px; font-size: 14.5px; }
+  #quiz .q-num { color: var(--accent); margin-right: 6px; }
+  #quiz .options { display: flex; flex-direction: column; gap: 8px; }
+  #quiz label.opt {
+    display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--border); cursor: pointer; font-size: 13.5px; background: var(--panel-2);
+    transition: border-color .15s;
+  }
+  #quiz label.opt:hover { border-color: var(--accent); }
+  #quiz label.opt input { margin-top: 3px; }
+  #quiz label.opt.correct { border-color: var(--accent-2); background: rgba(126,226,184,0.08); }
+  #quiz label.opt.incorrect { border-color: var(--danger); background: rgba(242,120,120,0.08); }
+  .q-explain {
+    display: none; margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+    background: var(--code-bg); border: 1px solid var(--border); font-size: 13px; color: var(--text-dim);
+  }
+  .q-explain.show { display: block; }
+  .q-explain b { color: var(--text); }
+
+  #quiz-submit {
+    background: var(--accent); color: #0f1115; border: none; padding: 13px 26px; border-radius: 10px;
+    font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 8px;
+  }
+  #quiz-submit:hover { filter: brightness(1.1); }
+  #quiz-reset {
+    background: transparent; color: var(--text-dim); border: 1px solid var(--border);
+    padding: 13px 20px; border-radius: 10px; font-size: 13.5px; cursor: pointer; margin-top: 8px; margin-left: 10px;
+  }
+  #quiz-result {
+    margin-top: 22px; padding: 22px 24px; border-radius: 12px; font-size: 16px; display: none; text-align: center;
+  }
+  #quiz-result.pass { background: rgba(126,226,184,0.1); border: 1px solid var(--accent-2); color: var(--accent-2); display: block; }
+  #quiz-result.fail { background: rgba(242,120,120,0.1); border: 1px solid var(--danger); color: var(--danger); display: block; }
+  #quiz-result .score { font-size: 30px; font-weight: 800; display: block; margin-bottom: 6px; }
 </style>
 </head>
 <body>
 
-<header>
-  <span class="badge">{{MODE_LABEL}}</span>
-  <span class="badge">{{CONTEXT_LABEL}}</span>
-  <span class="badge">{{DATE}}</span>
-  <h1>{{TITLE}}</h1>
-  <p>{{SUMMARY}}</p>
-</header>
+<div class="layout">
+  <nav class="toc">
+    <h3>Contents</h3>
+    <ol>
+      {{TOC_ITEMS}}
+    </ol>
+    <div class="quiz-status" id="toc-quiz-status">Quiz: not attempted</div>
+  </nav>
 
-<section>
-  <h2>Why</h2>
-  <p>{{WHY}}</p>
-</section>
+  <main>
+    <header class="hero" id="overview">
+      <div class="eyebrow">{{MODE_LABEL}} · {{CONTEXT_LABEL}}</div>
+      <h1>{{TITLE}}</h1>
+      <p class="sub">{{SUMMARY}}</p>
+      <div class="stat-row">
+        {{STATS_HTML}}
+      </div>
+    </header>
 
-<!-- SECTION:BEGIN — duplicate this whole <section class="area"> block once per entry in sections[] -->
-<section class="area">
-  <h2>{{SECTION_HEADING}}</h2>
-  <p>{{SECTION_BODY}}</p>
+    <section id="why">
+      <h2><span class="num">1.</span>Why</h2>
+      <p>{{WHY}}</p>
+    </section>
 
-  <div class="quiz">
-    <h3>Self-check</h3>
-    <!-- QUIZ_ITEM:BEGIN — duplicate this <details> block once per quiz item in this section -->
-    <details>
-      <summary>{{QUIZ_QUESTION}}</summary>
-      <div class="answer"><strong>{{QUIZ_ANSWER}}</strong><br>{{QUIZ_EXPLANATION}}</div>
-    </details>
-    <!-- QUIZ_ITEM:END -->
-  </div>
-</section>
+<!-- SECTION:BEGIN — duplicate this whole <section> block once per entry in sections[] -->
+    <section id="{{SECTION_ID}}">
+      <h2><span class="num">{{SECTION_NUM}}.</span>{{SECTION_HEADING}}</h2>
+      <p>{{SECTION_BODY}}</p>
+    </section>
 <!-- SECTION:END -->
 
 <!-- CHALLENGES:BEGIN — include this whole <section> only if challenges_and_decisions is non-empty -->
-<section>
-  <h2>Challenges &amp; decisions</h2>
-  <ul class="plain">
-    <!-- CHALLENGE_ITEM:BEGIN — duplicate this <li> once per entry -->
-    <li>{{CHALLENGE_TEXT}}</li>
-    <!-- CHALLENGE_ITEM:END -->
-  </ul>
-</section>
+    <section id="challenges">
+      <h2><span class="num">{{CHALLENGES_NUM}}.</span>Challenges &amp; decisions</h2>
+      <ul class="plain">
+<!-- CHALLENGE_ITEM:BEGIN — duplicate this <li> once per entry -->
+        <li>{{CHALLENGE_TEXT}}</li>
+<!-- CHALLENGE_ITEM:END -->
+      </ul>
+    </section>
 <!-- CHALLENGES:END -->
 
 <!-- RISKS:BEGIN — include this whole <section> only if risks_or_deferred is non-empty -->
-<section>
-  <h2>Known risks &amp; deferred items</h2>
-  <ul class="plain">
-    <!-- RISK_ITEM:BEGIN — duplicate this <li> once per entry -->
-    <li>{{RISK_TEXT}}</li>
-    <!-- RISK_ITEM:END -->
-  </ul>
-</section>
+    <section id="risks">
+      <h2><span class="num">{{RISKS_NUM}}.</span>Known risks &amp; deferred items</h2>
+      <ul class="plain">
+<!-- RISK_ITEM:BEGIN — duplicate this <li> once per entry -->
+        <li>{{RISK_TEXT}}</li>
+<!-- RISK_ITEM:END -->
+      </ul>
+    </section>
 <!-- RISKS:END -->
+
+    <section id="quiz">
+      <h2><span class="num">{{QUIZ_NUM}}.</span>Quiz — you must pass this</h2>
+      <p class="lead">{{QUIZ_TOTAL}} questions. You need <strong>{{QUIZ_PASS_THRESHOLD}} correct</strong> to pass. Wrong answers show the correct one — review, then retry.</p>
+      <div id="quiz-body"></div>
+      <button id="quiz-submit">Submit answers</button>
+      <button id="quiz-reset">Reset</button>
+      <div id="quiz-result"></div>
+    </section>
+
+    <footer class="report-footer">
+      Generated {{DATE}} — {{CONTEXT_LABEL}}
+    </footer>
+  </main>
+</div>
+
+<script>
+const QUESTIONS = {{QUIZ_QUESTIONS_JS}};
+
+const state = { answers: new Array(QUESTIONS.length).fill(null), submitted: false };
+const PASS_THRESHOLD = {{QUIZ_PASS_THRESHOLD}};
+
+function render() {
+  const body = document.getElementById('quiz-body');
+  body.innerHTML = QUESTIONS.map((item, qi) => `
+    <div class="q-card" data-qi="${qi}">
+      <div class="q-title"><span class="q-num">Q${qi + 1}.</span>${item.q}</div>
+      <div class="options">
+        ${item.options.map((opt, oi) => `
+          <label class="opt" data-oi="${oi}">
+            <input type="radio" name="q${qi}" value="${oi}">
+            <span>${opt}</span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="q-explain" id="explain-${qi}"></div>
+    </div>
+  `).join('');
+
+  body.querySelectorAll('input[type=radio]').forEach(input => {
+    input.addEventListener('change', (e) => {
+      const qi = parseInt(e.target.closest('.q-card').dataset.qi, 10);
+      state.answers[qi] = parseInt(e.target.value, 10);
+    });
+  });
+}
+
+function submit() {
+  let score = 0;
+  QUESTIONS.forEach((item, qi) => {
+    const card = document.querySelector(`.q-card[data-qi="${qi}"]`);
+    const chosen = state.answers[qi];
+    const isCorrect = chosen === item.correct;
+    if (isCorrect) score++;
+
+    card.querySelectorAll('.opt').forEach(label => {
+      label.classList.remove('correct', 'incorrect');
+      const oi = parseInt(label.dataset.oi, 10);
+      if (oi === item.correct) label.classList.add('correct');
+      else if (oi === chosen) label.classList.add('incorrect');
+    });
+
+    const ex = document.getElementById(`explain-${qi}`);
+    ex.classList.add('show');
+    ex.innerHTML = isCorrect
+      ? `<b>Correct.</b> ${item.explain}`
+      : `<b>Not quite.</b> Correct: "${item.options[item.correct]}". ${item.explain}`;
+  });
+
+  const result = document.getElementById('quiz-result');
+  const tocStatus = document.getElementById('toc-quiz-status');
+  const passed = score >= PASS_THRESHOLD;
+  result.className = passed ? 'pass' : 'fail';
+  result.innerHTML = `
+    <span class="score">${score} / ${QUESTIONS.length}</span>
+    ${passed
+      ? "Passed — you understand how this change works."
+      : `Need ${PASS_THRESHOLD}/${QUESTIONS.length} to pass. Re-read the highlighted questions, then retry.`}
+  `;
+  tocStatus.textContent = passed ? `Quiz: PASSED (${score}/${QUESTIONS.length})` : `Quiz: ${score}/${QUESTIONS.length} — retry`;
+  tocStatus.classList.toggle('passed', passed);
+  state.submitted = true;
+  result.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function reset() {
+  state.answers = new Array(QUESTIONS.length).fill(null);
+  state.submitted = false;
+  document.getElementById('quiz-result').className = '';
+  document.getElementById('quiz-result').innerHTML = '';
+  document.getElementById('toc-quiz-status').textContent = 'Quiz: not attempted';
+  document.getElementById('toc-quiz-status').classList.remove('passed');
+  render();
+}
+
+document.getElementById('quiz-submit').addEventListener('click', submit);
+document.getElementById('quiz-reset').addEventListener('click', reset);
+render();
+</script>
 
 </body>
 </html>
