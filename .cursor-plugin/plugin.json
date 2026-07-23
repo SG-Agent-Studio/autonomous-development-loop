@@ -1,6 +1,6 @@
 {
   "name": "autonomous-development-plugin",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Autonomous feature-development pipeline: parallel-worktree TDD implementation, fresh-subagent behavior verification, and Linus-style evidence-backed review.",
   "author": {
     "name": "Lee Jian Hong",
