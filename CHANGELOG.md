@@ -3,6 +3,12 @@
 All notable changes to this plugin are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.2] - 2026-07-23
+
+### Changed
+
+- `explain-changes` report redesigned for better styling and structure: the HTML template now includes a stats block (`{{STATS_HTML}}`), a generated table of contents (`{{TOC_ITEMS}}`), and numbered sections. Quiz format changed from free-text Q&A to multiple-choice (4 options, 0-indexed `correct` field). Subagent brief rewritten for conciseness — all prose is terse with no filler. Rendering logic extracted from `SKILL.md` into a dedicated `render-rules.md` file; error-handling cases removed from the skill (now the responsibility of callers). Subagent JSON schema gains a `stats` field for meaningful run counts (tasks done, issues fixed, review rounds, etc.).
+
 ## [0.4.1] - 2026-07-20
 
 ### Fixed
