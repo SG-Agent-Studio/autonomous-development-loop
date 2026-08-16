@@ -16,10 +16,12 @@ user to install it** (see the plugin README) rather than failing silently:
 - **`superpowers`** (required) — used for branch completion
   (`superpowers:finishing-a-development-branch`).
 - **`ponytail`** (optional) — `ponytail:ponytail-review` is one of the skills the single Stage 3 review agent applies. If absent, skip that skill and proceed with the remaining ones.
-- **playwright MCP** — required for UI verification when `interaction_mode ==
-  autonomous` (bundled in this plugin's `.mcp.json`). When `human-in-loop`, MCP is
-  optional: if absent, UI verification degrades to a human checklist handoff (see
-  `stage-verify.md`).
+- **Playwright CLI** — required for UI verification when `interaction_mode ==
+  autonomous`. Nothing to install ahead of time: the Stage 0.7 preflight probe
+  bootstraps a plugin-owned cache on first use (see
+  `skills/verifying-implementation/playwright-cli-procedure.md`). When
+  `human-in-loop`, it's optional: if unavailable, UI verification degrades to a human
+  checklist handoff (see `stage-verify.md`).
 - **`explain-changes`** (optional) — generates a reviewer-facing HTML report at
   the end of Stage 4 (`stage-final.md` Step 4.2b). If absent, or if it fails,
   skip it and proceed to commit/handoff — report generation never blocks the
@@ -51,16 +53,16 @@ human handoffs. It is distinct from the Mode A / Mode B pipeline selection above
 
 The orchestrator branches on `interaction_mode` at exactly three junctures:
 
-1. **Stage 0 preflight fallback** — an unresolved command or absent Playwright MCP.
+1. **Stage 0 preflight fallback** — an unresolved command or absent Playwright CLI capability.
 2. **Stage 2 verify fallback** — the verifier reports `blocked` acceptance criteria
-   (browser needed, MCP absent). `autonomous` hard-stops; `human-in-loop` writes a
+   (browser needed, Playwright CLI unavailable). `autonomous` hard-stops; `human-in-loop` writes a
    checklist, sets `last_outcome: "awaiting_human"`, and **pauses**. The Stage 2
    Clearance Gate in `stage-review-fix.md` blocks Stage 3 until the human clears it.
 3. **Stage 4 commit** — auto-commit vs leave-unstaged handoff.
 
 Everywhere else is identical across both values. **Subagents never branch on
 `interaction_mode`** — they run to completion and cannot pause. They receive
-concrete inputs (resolved commands, `mcp_available`) and keep assume-and-comment
+concrete inputs (resolved commands, `playwright_available`) and keep assume-and-comment
 behavior internally.
 
 ## Mode A: Full Pipeline
