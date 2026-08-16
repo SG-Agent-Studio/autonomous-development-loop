@@ -3,6 +3,12 @@
 All notable changes to this plugin are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Replaced the bundled Playwright-based MCP server with a Playwright CLI-driven procedure for Tier-3 UI verification. MCP servers are blocked outright by some orgs' client policies, so `verifying-implementation`'s UI checks now drive a real Chromium instance via a throwaway Node script instead, with `playwright` cached in `~/.cache/autonomous-development-plugin/playwright-cli/` on first use — never installed into the target project. `.mcp.json` and `mcp.json` are removed. The capability probe is renamed `playwright_available`; branching behavior (hard-stop in `autonomous`, human checklist handoff in `human-in-loop`) is unchanged.
+
 ## [0.4.2] - 2026-07-23
 
 ### Changed
@@ -34,7 +40,7 @@ All notable changes to this plugin are documented here. This project follows
 
 ### Added
 
-- Add `human-in-loop-feature-development` skill and `interaction_mode` flag: resolve project commands instead of requiring `just`, hand off UI verification when Playwright MCP is unavailable, and leave changes unstaged (with robust worktree cleanup) for manual commit.
+- Add `human-in-loop-feature-development` skill and `interaction_mode` flag: resolve project commands instead of requiring `just`, hand off UI verification when the bundled Playwright-based MCP server is unavailable, and leave changes unstaged (with robust worktree cleanup) for manual commit.
 
 ## [0.2.0] - 2026-06-30
 

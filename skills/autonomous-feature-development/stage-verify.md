@@ -9,7 +9,7 @@ decision on this page belongs to the orchestrator.
 ## Verifier subagent contract (mode-blind)
 
 Spawn a **verifier subagent** (single responsibility). It receives `spec_path` (absent
-in Mode B), `mcp_available`, and the resolved commands. It is **not** given the
+in Mode B), `playwright_available`, and the resolved commands. It is **not** given the
 orchestrator's interaction mode and makes no mode-dependent decision.
 
 It:
@@ -30,7 +30,7 @@ It:
   "blocked": [
     {
       "ac": "...",
-      "reason": "needs browser; mcp_available=n",
+      "reason": "needs browser; playwright_available=n",
       "how_to_check": "<smallest action a human can take>",
       "where_to_observe": "<URL / screen / log>"
     }
@@ -42,7 +42,7 @@ Rules:
 
 - `outcome` reflects **only** the acceptance criteria the verifier could actually
   exercise. Entries in `blocked` never influence `outcome`.
-- For each AC that needs the browser while `mcp_available == n`: do **not** attempt
+- For each AC that needs the browser while `playwright_available == n`: do **not** attempt
   it. Add it to `blocked`, filling in `how_to_check` and `where_to_observe`. These are
   mandatory — the orchestrator is forbidden from reading product code (Hard Rule 6)
   and therefore cannot author them.
@@ -56,7 +56,7 @@ them is human-handoff material. Route the rest to `failures`.
 
 | Underlying cause                            | Goes to                        |
 | ------------------------------------------- | ------------------------------ |
-| AC needs a browser AND `mcp_available == n` | `blocked`                      |
+| AC needs a browser AND `playwright_available == n` | `blocked`               |
 | System failed to start                      | `failures` (→ `outcome: fail`) |
 | AC unclear or unmeasurable                  | `failures` (→ `outcome: fail`) |
 | Any other `CANNOT-VERIFY`                   | `failures` (→ `outcome: fail`) |
@@ -84,7 +84,7 @@ pipeline hard-stops and the pause is never reached.
 **`autonomous` hard-stop.** Write `.loop-logs/<id>/error/verification-failure.md` with
 the blocked AC list and stop, exactly as the 3-round failure path below does. This is a
 backstop: Stage 0.7 already refuses to start an autonomous run with UI acceptance
-criteria and no MCP.
+criteria and no Playwright CLI capability.
 
 ## Verification state (single source of truth)
 

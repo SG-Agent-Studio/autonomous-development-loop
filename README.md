@@ -6,9 +6,9 @@ review → fix loops, plus standalone review and verification skills you can inv
 on their own.
 
 > **Platforms:** Claude Code **and** Cursor. Both read the same `skills/` folder
-> (identical `SKILL.md` format), so this single repo ships manifests for each:
-> `.claude-plugin/` + `.mcp.json` for Claude Code, `.cursor-plugin/` + `mcp.json`
-> for Cursor. The skills depend on agent primitives — cross-skill invocation,
+> (identical `SKILL.md` format), so this single repo ships a plugin manifest for
+> each: `.claude-plugin/` for Claude Code, `.cursor-plugin/` for Cursor. The
+> skills depend on agent primitives — cross-skill invocation,
 > subagent dispatch, and `git worktree`. Claude Code supports all of them; Cursor
 > supports subagents and `git worktree`, but its dispatch semantics differ and the
 > `superpowers`/`ponytail` dependencies below are not on the Cursor marketplace, so
@@ -20,7 +20,7 @@ on their own.
 | Skill                               | Use it when                                                                                                                                                                                                                               |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `autonomous-feature-development`    | You have a plan + spec ready to implement, or you received code-review feedback that needs validation and fixing. Runs the full pipeline or a standalone review-fix.                                                                      |
-| `human-in-loop-feature-development` | You are developing locally with a human present and want the pipeline to clarify unresolved commands, hand off UI verification when Playwright MCP is unavailable, and leave changes unstaged for you to commit.                          |
+| `human-in-loop-feature-development` | You are developing locally with a human present and want the pipeline to clarify unresolved commands, hand off UI verification when the Playwright CLI is unavailable, and leave changes unstaged for you to commit.                          |
 | `verifying-implementation`          | Work has observable runtime behavior (a service, DB, UI, queue, job). Gates a "done" claim behind a fresh subagent observing the running system meet its acceptance criteria.                                                             |
 | `enhanced-review`                   | Before merging code, or before implementing a spec/plan. Linus-Torvalds-style review with a five-why reflection so every verdict is evidence-backed.                                                                                      |
 | `explain-changes`                   | You want a self-contained HTML report explaining a diff/branch or an existing feature/module before reviewing it, ending in a self-check quiz. Also auto-invoked, non-blocking, at the end of `autonomous-feature-development`'s Stage 4. |
@@ -34,7 +34,7 @@ use. If a dependency is missing, the relevant skill will stop and tell you.
 | Dependency                                                            | Required for                                                                                                                                  | Notes                                                                                                                                                                         |
 | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`superpowers`](https://github.com/anthropics/superpowers) plugin     | Branch completion (`superpowers:finishing-a-development-branch`) and the verification fallback (`superpowers:verification-before-completion`) | Hard requirement. Install before this plugin.                                                                                                                                 |
-| **playwright MCP**                                                    | Tier 3 UI behavior verification in `verifying-implementation`                                                                                 | Bundled in this plugin's `.mcp.json` (`pnpx @playwright/mcp@latest`). Requires `pnpm`/`pnpx` on PATH. Without it, UI verification degrades to the user-confirmation fallback. |
+| **Playwright CLI**                                                    | Tier 3 UI behavior verification in `verifying-implementation`                                                                                 | Nothing to install ahead of time — a throwaway script driven via Node, with `playwright` cached in `~/.cache/autonomous-development-plugin/playwright-cli/` on first use (never in your project). Requires `node`/`npm` on PATH. Without it, UI verification degrades to the user-confirmation fallback. |
 | [`ponytail`](https://github.com/) plugin (`ponytail:ponytail-review`) | Mode A review stage in `autonomous-feature-development`                                                                                       | Used as one of the skills the single Stage 3 review agent applies. If absent, that skill is skipped.                                                                          |
 
 The pipeline needs project-local `lint` and `test` commands (with optional
@@ -56,7 +56,7 @@ This repo doubles as its own single-plugin marketplace for both agents.
    /plugin install autonomous-development-plugin@autonomous-development
    ```
    (See `.claude-plugin/marketplace.json`.)
-3. Ensure `pnpm`/`pnpx` is available so the bundled playwright MCP can start.
+3. Ensure `node`/`npm` is available so the Playwright CLI verification script can run.
 
 ### Cursor
 
@@ -66,7 +66,7 @@ This repo doubles as its own single-plugin marketplace for both agents.
    root, discovering the same `skills/` folder.
 3. Reload Cursor (**Developer: Reload Window**) and confirm the skills appear
    in settings.
-4. Ensure `pnpm`/`pnpx` is on PATH for the bundled playwright MCP (`mcp.json`).
+4. Ensure `node`/`npm` is on PATH for the Playwright CLI verification script.
 5. `superpowers` and `ponytail` are **not** on the Cursor marketplace. Their
    skills are unavailable, so the stages that call them degrade to the built-in
    fallbacks rather than failing (each skill says so when a dependency is missing).
@@ -80,9 +80,9 @@ this implementation" once a feature with runtime behavior is built.
 The autonomous pipeline is **fully autonomous** by design — it does not pause for
 input mid-run. Read `skills/autonomous-feature-development/SKILL.md` for the stage
 breakdown and hard rules before first use. For local, human-present runs that
-clarify missing commands, hand off UI verification without Playwright MCP, and
-leave changes unstaged for you to commit, invoke `human-in-loop-feature-development`
-instead.
+clarify missing commands, hand off UI verification when the Playwright CLI is
+unavailable, and leave changes unstaged for you to commit, invoke
+`human-in-loop-feature-development` instead.
 
 ## Architecture
 

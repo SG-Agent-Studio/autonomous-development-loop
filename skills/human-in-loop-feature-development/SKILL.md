@@ -1,6 +1,6 @@
 ---
 name: human-in-loop-feature-development
-description: Use for local, human-present feature development from a plan + spec (or review feedback) — the same pipeline as autonomous-feature-development, but it clarifies unresolved commands, hands off UI verification when Playwright MCP is unavailable, and leaves changes unstaged for the human to commit. Use when the user wants human-in-the-loop control, cannot auto-commit, or lacks `just`/MCP.
+description: Use for local, human-present feature development from a plan + spec (or review feedback) — the same pipeline as autonomous-feature-development, but it clarifies unresolved commands, hands off UI verification when the Playwright CLI is unavailable, and leaves changes unstaged for the human to commit. Use when the user wants human-in-the-loop control, cannot auto-commit, or lacks `just` or the Playwright CLI.
 ---
 
 # Human-in-Loop Feature Development
@@ -16,7 +16,7 @@ That engine owns every stage; this skill only sets the interaction contract. The
 engine branches on `interaction_mode` at three orchestrator junctures:
 
 1. **Unresolved command** (Stage 0) — ask the user, persist to `CLAUDE.md`, continue.
-2. **Playwright MCP unavailable for a UI acceptance criterion** (Stage 2) — write a
+2. **Playwright CLI unavailable for a UI acceptance criterion** (Stage 2) — write a
    checklist to `.loop-logs/<id>/verifications/verification-<round>.md`, set
    `last_outcome: "awaiting_human"`, then **stop and end the turn**. Stage 3 is
    blocked by the Stage 2 Clearance Gate until the human clears it.

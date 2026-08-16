@@ -18,8 +18,10 @@ Announce on use: _"I'm using verifying-implementation to gate this completion cl
 - **`superpowers`** (required) — this skill falls back to
   `superpowers:verification-before-completion` when no Tier-3 trigger fires. If
   it is not installed, stop and tell the user to install it (see the plugin README).
-- **playwright MCP** (required for UI verification) — bundled in this plugin's
-  `.mcp.json`. Without it, Tier 3 UI checks degrade to the user-confirmation fallback.
+- **Playwright CLI** (required for UI verification) — a throwaway Playwright script
+  run via Node, with `playwright` cached outside the target project. See
+  `playwright-cli-procedure.md`. Without it, Tier 3 UI checks degrade to the
+  user-confirmation fallback.
 
 ## When this skill fires (any one trigger = MUST run the gate)
 
@@ -99,3 +101,5 @@ The fix isn't more unit tests — it's a separate agent watching the running sys
 - `tier-3-procedure.md` — the behavior walk-through the subagent runs
 - `subagent-template.md` — the dispatch contract
 - `acceptance-criteria-gate.md` — what to do when AC are missing or vague
+- `playwright-cli-procedure.md` — cache setup, preflight probe, and the per-round
+  script contract for UI verification

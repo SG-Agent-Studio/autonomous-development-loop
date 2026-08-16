@@ -5,7 +5,7 @@
 | Skill                            | Entry Point                                      | Purpose                                                                                                | Trigger                                                                                                            |
 | -------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `autonomous-feature-development` | `skills/autonomous-feature-development/SKILL.md` | Fully autonomous pipeline: parallel worktree implementation, then a capped verify↔review loop          | After brainstorming/planning session with `plan_path` + `spec_path` ready; or after receiving code review feedback |
-| `human-in-loop-feature-development` | `skills/human-in-loop-feature-development/SKILL.md` | Thin wrapper: runs the engine with `interaction_mode = human-in-loop` — clarifies missing commands, hands off UI verification without MCP, leaves changes unstaged | Local, human-present development; can't auto-commit; missing `just`/Playwright MCP |
+| `human-in-loop-feature-development` | `skills/human-in-loop-feature-development/SKILL.md` | Thin wrapper: runs the engine with `interaction_mode = human-in-loop` — clarifies missing commands, hands off UI verification without the Playwright CLI, leaves changes unstaged | Local, human-present development; can't auto-commit; missing `just`/the Playwright CLI |
 | `enhanced-review`                | `skills/enhanced-review/SKILL.md`                | Linus-style review for code, specs, or plans with five-why reflection before any verdict              | Before merging code; before implementing a spec or plan (shift-left); when something feels off                     |
 | `verifying-implementation`       | `skills/verifying-implementation/SKILL.md`       | Boot the system and verify against acceptance criteria using a fresh subagent                         | Work touches a running service; plan has a Verification section; AC describe observable runtime behavior           |
 | `cleanup-loop-logs`              | `skills/cleanup-loop-logs/SKILL.md`              | Human-only purge of one run's `.loop-logs/<id>/` logs + orphaned worktrees/branches                   | Human-triggered only (`disable-model-invocation`); never invoked by the model                                     |
@@ -25,7 +25,7 @@ flowchart TD
     SM[simplify\nexternal plugin]
     SP[superpowers:finishing-a-development-branch\nexternal plugin]
     VBC[superpowers:verification-before-completion\nexternal plugin]
-    PW[playwright MCP\nbundled in .mcp.json]
+    PW[Playwright CLI\ncached in ~/.cache/autonomous-development-plugin]
     EC[explain-changes]
 
     HIL -->|sets interaction_mode = human-in-loop| AFD
@@ -106,7 +106,7 @@ addition that the engine reads a flag.
 **The `interaction_mode` flag** (`autonomous` default | `human-in-loop`) is
 distinct from Mode A / Mode B pipeline selection. The orchestrator branches on it at
 **exactly three junctures**; everywhere else is shared. **Subagents never branch on
-it** — they receive concrete inputs (resolved commands, `mcp_available`) and stay
+it** — they receive concrete inputs (resolved commands, `playwright_available`) and stay
 autonomous.
 
 **Stage 2 is gated, not merely instructed.** When the verifier reports `blocked`
@@ -119,12 +119,12 @@ stale, or `awaiting_human` state file halts the pipeline. The gate fails closed.
 | Juncture | `autonomous` | `human-in-loop` |
 | -------- | ------------ | --------------- |
 | Stage 0 — unresolved required command (`lint`/`test`) | Hard-stop listing the unresolved names | Ask the user, persist to a `## Commands` section in `CLAUDE.md`, continue |
-| Stage 2 — UI acceptance criterion needs Playwright MCP but it is absent | Hard-stop (preflight AC-scan + per-AC backstop) | Verifier auto-verifies non-UI ACs and returns them as `blocked[]` facts; orchestrator writes `.loop-logs/<id>/verifications/verification-<round>.md`, sets `last_outcome: "awaiting_human"`, and **pauses**. The human records each `Result:` in that file and replies `continue`; the Stage 2 Clearance Gate blocks Stage 3 until then. Any `FAIL` folds back into the fix loop |
+| Stage 2 — UI acceptance criterion needs the Playwright CLI but it is unavailable | Hard-stop (preflight AC-scan + per-AC backstop) | Verifier auto-verifies non-UI ACs and returns them as `blocked[]` facts; orchestrator writes `.loop-logs/<id>/verifications/verification-<round>.md`, sets `last_outcome: "awaiting_human"`, and **pauses**. The human records each `Result:` in that file and replies `continue`; the Stage 2 Clearance Gate blocks Stage 3 until then. Any `FAIL` folds back into the fix loop |
 | Stage 4 — commit | `git add -A` + commit (or `wip:` partial), then branch completion | Never commit — `git reset --mixed <base_sha>` leaves everything unstaged; skip branch completion; prompt the human |
 
 Command resolution and the commit handoff apply to both Mode A and Mode B; the
-Stage 0 MCP AC-scan is Mode A only (Mode B has no `spec_path`), though the
-verify-time per-AC MCP backstop still applies.
+Stage 0 Playwright CLI AC-scan is Mode A only (Mode B has no `spec_path`), though the
+verify-time per-AC Playwright CLI backstop still applies.
 
 **File structure:**
 
@@ -190,6 +190,7 @@ Tier 3 is mandatory when any trigger fires. Tests passing alone is not done.
 | `SKILL.md`                    | Gate logic, triggers, exemptions, red flags                |
 | `tier-3-procedure.md`         | Step-by-step behavior walk-through the subagent runs       |
 | `subagent-template.md`        | Dispatch contract — prompt template for the fresh subagent |
+| `playwright-cli-procedure.md` | Cache setup, preflight probe, and the per-round script contract for UI verification |
 | `acceptance-criteria-gate.md` | What to do when AC are missing or vague                    |
 
 **Used internally by:** `autonomous-feature-development` loop VERIFY step. The orchestrator does not run this skill directly — it spawns a **verifier subagent** that runs the skill and returns structured `{ outcome, failures }`. In Mode B (no `spec_path`) the verifier runs regression-only: boot + exercise the changed paths, no spec-acceptance match.

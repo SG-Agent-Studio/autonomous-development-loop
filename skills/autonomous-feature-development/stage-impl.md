@@ -114,18 +114,19 @@ memory — only asked answers are persisted.
 
 ### Step 0.7 — Probe verification capability (Mode A)
 
-Check whether the bundled Playwright MCP tools are available → `mcp_available`
-(y/n). Scan `spec_path` acceptance criteria for browser-observable behavior
-(rendered pages, UI state, client-side interaction).
+Run the Playwright CLI preflight probe
+(`skills/verifying-implementation/playwright-cli-procedure.md` § One-time cache setup)
+→ `playwright_available` (y/n). Scan `spec_path` acceptance criteria for
+browser-observable behavior (rendered pages, UI state, client-side interaction).
 
-- A UI AC is present AND `mcp_available == n`:
+- A UI AC is present AND `playwright_available == n`:
   - `interaction_mode == autonomous`: **hard-stop**. Print
-    `ERROR: UI acceptance criteria require Playwright MCP, which is unavailable.` and stop.
+    `ERROR: UI acceptance criteria require the Playwright CLI, which is unavailable.` and stop.
   - `interaction_mode == human-in-loop`: print a heads-up that UI verification will
     be handed to the human via a checklist, and continue.
 
-Record `mcp_available` and inject it into the verifier subagent prompt. It is the
-verifier's **only** capability input — never inject `interaction_mode` into any
+Record `playwright_available` and inject it into the verifier subagent prompt. It is
+the verifier's **only** capability input — never inject `interaction_mode` into any
 subagent. The verifier reports blocked criteria as facts; the orchestrator alone
 translates them into mode policy (see `stage-verify.md`). Mode B has no `spec_path` —
 skip the AC-scan; the verify-time per-AC backstop still applies.
