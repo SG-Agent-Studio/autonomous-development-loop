@@ -75,9 +75,9 @@ describe("stage 2 human verification gate", () => {
     expect(s, "no Loop Control step `1a.`").toMatch(/^\s*1a\./m);
   });
 
-  it('A4: Stage 2 Clearance Gate gates on last_outcome == "pass"', () => {
+  it('A4: Stage 4 Clearance Gate gates on last_outcome == "pass"', () => {
     const s = read(REVIEW_FIX);
-    expect(s, "gate heading absent").toContain("Stage 2 Clearance Gate");
+    expect(s, "gate heading absent").toContain("Stage 4 Clearance Gate");
     expect(s, "gate does not require a positive pass").toContain('last_outcome == "pass"');
   });
 

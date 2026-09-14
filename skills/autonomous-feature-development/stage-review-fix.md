@@ -1,12 +1,12 @@
-# Stage 3 / Mode B: Capped Verify↔Review Loop
+# Stage 4 + 5 / Mode B: Capped Verify↔Review Loop
 
-Stage 3 is not a single pass. It is a loop that alternates VERIFY (Stage 2) and
+Stage 5 is not a single pass. It is a loop that alternates VERIFY (Stage 4) and
 REVIEW until a review round raises **zero actionable issues**, or a hard cap of 5
 iterations is hit.
 
 Used in two contexts:
 
-- **Mode A**: After Stage 1, the orchestrator runs the Loop Control below.
+- **Mode A**: After Stage 3, the orchestrator runs the Loop Control below.
 - **Mode B Standalone**: Issues already exist from a received code review — the
   orchestrator first validates and fixes them (Part 0), then enters the same loop.
 
@@ -29,7 +29,7 @@ LOOP:
      last_outcome == "awaiting_human"): STOP. Do NOT run REVIEW. End the turn.
      Resume at "Resume after human verification" in ./stage-verify.md, which
      re-enters this iteration without incrementing `iteration`.
-  2. REVIEW  — run the Stage 2 Clearance Gate below, then Part 1: spawn the review
+  2. REVIEW  — run the Stage 4 Clearance Gate below, then Part 1: spawn the review
      agent, then write .loop-logs/<id>/code-review/round-<iteration>.md.
   3. If actionable count == 0:  exit LOOP → "After the Loop".
   4. If iteration == 5:  cap reached → write .loop-logs/<id>/error/review-loop-exhausted.md,
@@ -68,7 +68,7 @@ work, with no spec-acceptance match.
 
 ## Part 1: Review (one iteration)
 
-### Stage 2 Clearance Gate
+### Stage 4 Clearance Gate
 
 **This check is mandatory. Do not spawn any reviewer until it passes.**
 
@@ -81,17 +81,17 @@ than merely forbidding `awaiting_human`, so a silently-skipped verify is caught 
 If the gate does not pass, print exactly:
 
 ```
-STOP — Stage 2 Clearance Gate failed.
+STOP — Stage 4 Clearance Gate failed.
 
 verification-state.json last_outcome = <value, or "file missing">
 Expected: "pass"
 
-Stage 2 is not cleared. The review agent was NOT spawned.
+Stage 4 is not cleared. The review agent was NOT spawned.
 If last_outcome is "awaiting_human", the run is waiting on the checklist at
 <checklist_path> — resume at "Resume after human verification" in ./stage-verify.md.
 ```
 
-Then end the turn. Do not advance to Stage 3 or Stage 4.
+Then end the turn. Do not advance to Stage 5, 6, or 7.
 
 ### Spawn the review agent
 
@@ -240,7 +240,7 @@ git commit -m "wip: review loop exhausted after 5 iterations — see .loop-logs/
 
 ## After the Loop
 
-**Mode A:** Read `./stage-final.md` and proceed to Stage 4.
+**Mode A:** Read `./stage-e2e.md` and proceed to Stage 6.
 
 **Mode B:** Run `superpowers:finishing-a-development-branch` (requires the `superpowers`
 plugin — if absent, stop and tell the user to install it). Before that, print:

@@ -1,4 +1,4 @@
-# Stage 2: Verification (loop VERIFY step)
+# Stage 4: Verification (loop VERIFY step)
 
 The orchestrator does NOT verify or fix directly. It spawns subagents and routes on
 their structured output.
@@ -9,7 +9,11 @@ decision on this page belongs to the orchestrator.
 ## Verifier subagent contract (mode-blind)
 
 Spawn a **verifier subagent** (single responsibility). It receives `spec_path` (absent
-in Mode B), `playwright_available`, and the resolved commands. It is **not** given the
+in Mode B), `playwright_available`, the resolved commands, and (if present) `plan_path`'s
+`## Deferred to Verification` section — content Stage 1 moved out of the numbered task
+list because it wasn't implementation work (e.g. a stray "manually verify staging"
+task). Use it as extra context on what to check; it never changes `outcome`'s pass/fail
+logic below. It is **not** given the
 orchestrator's interaction mode and makes no mode-dependent decision.
 
 It:
@@ -83,7 +87,7 @@ pipeline hard-stops and the pause is never reached.
 
 **`autonomous` hard-stop.** Write `.loop-logs/<id>/error/verification-failure.md` with
 the blocked AC list and stop, exactly as the 3-round failure path below does. This is a
-backstop: Stage 0.7 already refuses to start an autonomous run with UI acceptance
+backstop: Stage 2.5 already refuses to start an autonomous run with UI acceptance
 criteria and no Playwright CLI capability.
 
 ## Verification state (single source of truth)
@@ -104,7 +108,7 @@ After **every** verify round — pass, fail, or pause — the orchestrator write
 - `checklist_path` is present **if and only if** `last_outcome == "awaiting_human"`.
 - The `resume` pointer is load-bearing. A paused turn ends; the orchestrator's next
   context may be fresh. This field tells it where to find its own instructions.
-- This file is the sole input to the **Stage 2 Clearance Gate** in
+- This file is the sole input to the **Stage 4 Clearance Gate** in
   `./stage-review-fix.md`, which admits the REVIEW step only when `last_outcome` is
   `"pass"`.
 
@@ -152,11 +156,11 @@ Reached when `outcome == "pass"` and `blocked` is non-empty.
 4. **STOP.**
 
    ```
-   STOP — Stage 2 is awaiting human verification.
+   STOP — Stage 4 is awaiting human verification.
 
    Do NOT run the REVIEW step.
    Do NOT spawn reviewers, a consolidator, or any fix agent.
-   Do NOT advance to Stage 3 or Stage 4.
+   Do NOT advance to Stage 5, 6, or 7.
 
    End the turn now. Resume only on the human's reply, at
    "Resume after human verification" below.
