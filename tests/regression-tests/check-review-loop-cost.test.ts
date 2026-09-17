@@ -88,7 +88,7 @@ describe("stage 3 review-loop cost optimization", () => {
       "one of three parallel reviewers",
     );
     expect(s, "missing the skill-the-review-agent-applies framing").toContain(
-      "the single Stage 3 review agent applies",
+      "the single Stage 5 review agent applies",
     );
   });
 });

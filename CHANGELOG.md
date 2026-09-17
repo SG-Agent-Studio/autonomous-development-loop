@@ -3,6 +3,18 @@
 All notable changes to this plugin are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `autonomous-feature-development` Stage 1 Plan Detail Gate (`stage-plan-gate.md`) — a gate-check subagent judges `plan_path` against a new self-contained `plan-quality-checklist.md` (extracted once from `superpowers:writing-plans`, no runtime dependency on that skill), classifies each task as implementation vs non-implementation (moving stray non-implementation tasks like "manually verify staging" into a `## Deferred to Verification` section), and elaborates + capped-reviews (≤3 rounds) an under-detailed plan in place before any branch/worktree/task file exists. Ambiguous elaboration decisions are assumed and recorded in `<spec-basename>-assumptions.md` (`autonomous`) or asked synchronously in-conversation (`human-in-loop`) — the pipeline's fourth `interaction_mode` juncture.
+- `autonomous-feature-development` Stage 6 E2E Test Writing (`stage-e2e.md`) — runs after the verify↔review loop clears; derives browser-observable scenarios from `spec_path` into `<spec-basename>-e2e-test-plan.md`, then a single implementer + faithfulness-verifier loop (≤2 rounds, Opus planner revises the scenario doc on failure) writes and runs real E2E tests via a newly-resolved `<e2e_test_cmd>` (Stage 2 command resolution now also detects Playwright/Cypress config files directly, not just named scripts). Skipped entirely, in both interaction modes, when no E2E tooling is detected — no scaffolding invented.
+
+### Changed
+
+- `autonomous-feature-development` Stage 3 Implementation simplified from one-worktree-per-task parallel agents to a single implementer subagent working sequentially through all tasks in one worktree, followed by a separate faithfulness-verifier subagent (diff-vs-plan fidelity, distinct from Stage 4's spec-acceptance verifier) with a capped fix loop (≤2 rounds) where an Opus planner subagent root-causes failures and revises `plan_path` (`#### Revision N` per task, or a `## Plan Revision History` section for architecture-level issues) rather than retrying the same implementer under the same pressure.
+- Pipeline renumbered end-to-end for the two additions above: 1=Plan Detail Gate (new), 2=Guard & Setup, 3=Implementation, 4=Verify, 5=Review, 6=E2E Test Writing (new), 7=Final Commit. `stage-verify.md`'s verifier now also reads Stage 1's `## Deferred to Verification` content as extra context. `stage-final.md`'s summary gains an E2E row, and its decisions log additionally consolidates Stage 1's assumptions file and Stage 3's plan revisions.
+
 ## [0.5.0] - 2026-08-16
 
 ### Changed

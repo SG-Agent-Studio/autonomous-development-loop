@@ -1,28 +1,12 @@
-# Stage 0 + 1: Guard, Setup & Parallel Implementation
+# Stage 2 + 3: Guard, Setup & Implementation
 
-## Stage 0: Guard & Setup
+`plan_path` and `spec_path` have already passed Stage 1 (`stage-plan-gate.md`)
+by the time this file runs — `id` was already computed there (Step 1.2); it
+is not recomputed here.
 
-### Step 0.1 — Validate inputs
+## Stage 2: Guard & Setup
 
-From conversation context, identify `plan_path` and `spec_path`. Check each file in order:
-
-1. Does `plan_path` exist? No → print `ERROR: Plan file not found: <plan_path>` and stop.
-2. Is `plan_path` non-empty (size > 0)? No → print `ERROR: Plan file is empty: <plan_path>` and stop.
-3. Does `spec_path` exist? No → print `ERROR: Spec file not found: <spec_path>` and stop.
-4. Is `spec_path` non-empty (size > 0)? No → print `ERROR: Spec file is empty: <spec_path>` and stop.
-
-### Step 0.2 — Compute run `id`
-
-Derive a single `id` that namespaces every log artifact for this run:
-
-- **Mode A (this stage):** `id` = plan filename basename with `.md` stripped (keep the
-  date prefix). Example: `2026-06-16-ticket-3-ingestion.md` → `2026-06-16-ticket-3-ingestion`.
-- **Mode B (set in `stage-review-fix.md`):** `id` = `<today>-review-<current-branch>`.
-
-Every log path in every stage is `.loop-logs/<id>/...`. Substitute the computed `id`
-wherever `<id>` appears below. Create `.loop-logs/<id>/` lazily on first write.
-
-### Step 0.3 — Branch guard
+### Step 2.1 — Branch guard
 
 Run: `git rev-parse --abbrev-ref HEAD`
 
@@ -35,10 +19,14 @@ Run: `git rev-parse --abbrev-ref HEAD`
 - Otherwise: continue on current branch.
 
 Record `base_sha` = output of `git rev-parse HEAD` — the branch tip before any task
-work. Used by the human-in-loop commit handoff (`stage-final.md` Step 4.3) and
-the `explain-changes` reviewer-report invocation (`stage-final.md` Step 4.2b).
+work. Used by the human-in-loop commit handoff (`stage-final.md` Step 7.3) and
+the `explain-changes` reviewer-report invocation (`stage-final.md` Step 7.2b).
 
-### Step 0.4 — Parse tasks
+### Step 2.2 — Parse tasks
+
+By this point Stage 1 has already moved every `non-implementation` task into
+`## Deferred to Verification` — every remaining `### Task N:` heading is
+implementation work.
 
 Read `plan_path`. Extract every heading matching `### Task N: <name>` (N = a number). For each match:
 
@@ -46,7 +34,7 @@ Read `plan_path`. Extract every heading matching `### Task N: <name>` (N = a num
   - Example: `### Task 3: Tavily Service` → `task-3-tavily-service`
 - Record line range (from this heading to next `### Task` heading or end of file)
 
-### Step 0.5 — Initialize task files
+### Step 2.3 — Initialize task files
 
 For each parsed task, write `.loop-logs/<id>/tasks/<task-id>.json`:
 
@@ -74,18 +62,19 @@ Setup complete. Found <N> tasks:
 Working branch: <current-branch>
 ```
 
-### Step 0.6 — Resolve project commands
+### Step 2.4 — Resolve project commands
 
-The pipeline needs four commands. Resolve each **once** here; never hardcode a tool.
+The pipeline needs five commands. Resolve each **once** here; never hardcode a tool.
 
-| Variable       | Purpose         | Required                        |
-| -------------- | --------------- | ------------------------------- |
-| `<lint_cmd>`   | lint            | yes                             |
-| `<test_cmd>`   | unit tests      | yes                             |
-| `<format_cmd>` | format          | no (skip step if unresolved)    |
-| `<start_cmd>`  | boot the system | no (only for Tier-3/UI verify)  |
+| Variable         | Purpose          | Required                        |
+| ---------------- | ---------------- | ------------------------------- |
+| `<lint_cmd>`     | lint             | yes                             |
+| `<test_cmd>`     | unit tests       | yes                             |
+| `<format_cmd>`   | format           | no (skip step if unresolved)    |
+| `<start_cmd>`    | boot the system  | no (only for Tier-3/UI verify)  |
+| `<e2e_test_cmd>` | E2E tests        | no (skip Stage 6 if unresolved) |
 
-Resolve in precedence order:
+Resolve `<lint_cmd>`/`<test_cmd>`/`<format_cmd>`/`<start_cmd>` in precedence order:
 
 1. A `## Commands` section in `CLAUDE.md` or `AGENTS.md`:
 
@@ -95,10 +84,28 @@ Resolve in precedence order:
    - Test: `<cmd>`
    - Format: `<cmd>`
    - Start: `<cmd>`
+   - E2E: `<cmd>`
    ```
 
 2. Project config — `justfile`, `package.json` scripts, `Makefile`,
    `pyproject.toml`/uv, etc. (e.g. `package.json` `"scripts": { "lint": ... }` → `pnpm lint`).
+
+Resolve `<e2e_test_cmd>` with one extra tier, since E2E tooling is easy to
+have configured without a named script:
+
+1. An `E2E:` line in `## Commands` (above).
+2. Script-based project config — `package.json` scripts (`test:e2e`, `e2e`),
+   `justfile`/`Makefile` targets of the same name.
+3. Direct framework-config detection — scan the repo root (and one level of
+   common subdirectories) for `playwright.config.{js,ts,mjs}`,
+   `cypress.config.{js,ts}`, or a `cypress/`/`e2e/`/`tests/e2e/` directory.
+   If found with no explicit script, infer the standard command for that
+   framework: `npx playwright test` (Playwright) or `npx cypress run`
+   (Cypress).
+
+If none of the three resolve, `<e2e_test_cmd>` stays unresolved — this is
+**not** an error. Stage 6 (`stage-e2e.md`) checks for this and skips itself
+entirely when unresolved, in both interaction modes.
 
 If a **required** command (`lint`, `test`) is still unresolved:
 
@@ -112,7 +119,7 @@ Inject the resolved commands into **every subagent prompt** (alongside `LOG_PATH
 so agents never re-discover. Do **not** write config-discovered commands back to
 memory — only asked answers are persisted.
 
-### Step 0.7 — Probe verification capability (Mode A)
+### Step 2.5 — Probe verification capability (Mode A)
 
 Run the Playwright CLI preflight probe
 (`skills/verifying-implementation/playwright-cli-procedure.md` § One-time cache setup)
@@ -142,15 +149,15 @@ File writes are split by owner:
 | `.loop-logs/<id>/tasks/<task-id>.json`          | Orchestrator                                                  | Before spawn (`in_progress`), after agent returns (`completed`/`failed`) |
 | `.loop-logs/<id>/logs/<task-id>.md`             | Agent (written directly, both Workflow and non-Workflow mode) | Incrementally — appended after each TDD attempt                          |
 | `.loop-logs/<id>/error/<task-id>.md`            | Agent (written directly, both Workflow and non-Workflow mode) | On hard stop (3 failures exhausted)                                      |
-| `.loop-logs/<id>/logs/summary.md`               | Orchestrator (Stage 4 only)                                   | Stage 4 only                                                             |
-| `.loop-logs/<id>/tasks/verification-state.json` | Orchestrator                                                  | After every verification round (Stage 2) — pass, fail, or `awaiting_human` |
-| `.loop-logs/<id>/verifications/verification-<round>.md` | Orchestrator (written), **human (edits `Result:` lines)** | On human handoff (Stage 2, `human-in-loop` only)                    |
+| `.loop-logs/<id>/logs/summary.md`               | Orchestrator (Stage 7 only)                                   | Stage 7 only                                                             |
+| `.loop-logs/<id>/tasks/verification-state.json` | Orchestrator                                                  | After every verification round (Stage 4) — pass, fail, or `awaiting_human` |
+| `.loop-logs/<id>/verifications/verification-<round>.md` | Orchestrator (written), **human (edits `Result:` lines)** | On human handoff (Stage 4, `human-in-loop` only)                    |
 
 ### Task state lifecycle (orchestrator responsibility)
 
 Before calling each per-task agent, the orchestrator:
 
-1. Writes `{ "status": "in_progress", "worktree": ".worktrees/<task-id>" }` into `.loop-logs/<id>/tasks/<task-id>.json` (merging with the existing fields from Stage 0).
+1. Writes `{ "status": "in_progress", "worktree": ".worktrees/<task-id>" }` into `.loop-logs/<id>/tasks/<task-id>.json` (merging with the existing fields from Stage 2).
 2. Computes the absolute repo root path (e.g. via `git rev-parse --show-toplevel`) and injects two paths into the agent's prompt:
    - `LOG_PATH`: `<absolute-repo-root>/.loop-logs/<id>/logs/<task-id>.md`
    - `ERROR_LOG_PATH`: `<absolute-repo-root>/.loop-logs/<id>/error/<task-id>.md`
@@ -159,7 +166,7 @@ After the agent returns, the orchestrator writes the final task state from the a
 
 ### Required agent response schema
 
-When implementing Stage 1 via the Workflow tool, use the `schema` option on each
+When implementing Stage 3 via the Workflow tool, use the `schema` option on each
 `agent()` call. The agent must return:
 
 ```json
@@ -188,39 +195,44 @@ If `status` is `"failed"`, omit `"tdd-loop-complete"` from `completed_steps`.
 ---
 
 **Both Workflow and non-Workflow mode:** The agent prompt MUST include steps A–D from
-the "Per-Task Agent Instructions" section below. Agents write `LOG_PATH` and
+the "Per-Task Instructions" section below. Agents write `LOG_PATH` and
 `ERROR_LOG_PATH` directly in both modes — the orchestrator never writes those files.
 
 ---
 
-## Stage 1: Parallel Implementation
+## Stage 3: Implementation
 
-Spawn one worktree agent per task **simultaneously** — all at once, not sequentially. Each agent receives its `task_id` and the path to its task file: `.loop-logs/<id>/tasks/<task-id>.json`.
+**Single implementer subagent, one worktree for the whole stage** — not one
+worktree per task, not parallel agents. It works through every remaining
+`### Task N:` task **sequentially**, in task-number order.
+
+```bash
+git worktree add .worktrees/impl -b worktree/impl
+```
+
+Switch working directory to `.worktrees/impl` for ALL remaining steps in this
+agent's run. All bash commands, file reads, and git operations MUST run from
+within `.worktrees/impl`.
+
+The orchestrator injects, once, before spawning:
+
+- `LOG_PATH` — absolute path to `.loop-logs/<id>/logs/impl.md` in the main repo root
+- `ERROR_LOG_PATH` — absolute path to `.loop-logs/<id>/error/impl.md` in the main repo root
+
+Use these paths for all log writes below. Never use relative paths for log
+files — the working directory is the worktree, not the repo root.
+
+For each task, before starting it: update
+`.loop-logs/<id>/tasks/<task-id>.json` — `"status": "in_progress"`,
+`"worktree": ".worktrees/impl"`.
 
 ---
 
-### Per-Task Agent Instructions
+### Per-Task Instructions (repeated sequentially by the single implementer)
 
 #### Agent Step A — Read task file
 
 Read `.loop-logs/<id>/tasks/<task-id>.json`. Extract `plan`, `spec`, `attempt`, `task_id`.
-
-#### Agent Step B — Create worktree
-
-```bash
-git worktree add .worktrees/<task-id> -b worktree/<task-id>
-```
-
-Switch working directory to `.worktrees/<task-id>` for ALL remaining steps. All bash commands, file reads, and git operations MUST run from within `.worktrees/<task-id>`.
-
-The orchestrator injects two absolute paths into this agent's prompt before spawning:
-
-- `LOG_PATH` — absolute path to `.loop-logs/<id>/logs/<task-id>.md` in the main repo root
-- `ERROR_LOG_PATH` — absolute path to `.loop-logs/<id>/error/<task-id>.md` in the main repo root
-
-Use these paths for all log writes in Step D. Never use relative paths for log files — the working directory is the worktree, not the repo root.
-
-Update task JSON: `"status": "in_progress"`, `"worktree": ".worktrees/<task-id>"`.
 
 #### Agent Step C — Read task content and write Task Header
 
@@ -242,7 +254,7 @@ Write the **Task Header** (Tier 1 from `log-schema.md`) to `LOG_PATH` now, befor
 
 1. Write the failing test first. Run it and confirm it fails with the expected reason.
 2. Write the minimal implementation to make it pass.
-3. Run verifiable signals in order (`<lint_cmd>`/`<test_cmd>` = the commands injected by the orchestrator in Step 0.6):
+3. Run verifiable signals in order (`<lint_cmd>`/`<test_cmd>` = the commands injected by the orchestrator in Step 2.4):
    - `<lint_cmd>` — must exit 0
    - `<test_cmd>` — must exit 0
 
@@ -313,41 +325,39 @@ Stop.
 
 ---
 
-### Squash Merge (after ALL agents finish)
+### Squash Merge (after the implementer finishes all tasks, and Stage 3's faithfulness check passes)
 
 Follow `../../rules/git-linear-history.md` — squash merge only, never plain
-`git merge`, on every worktree branch below.
+`git merge`.
 
-Wait for all worktree agents to complete (success or hard-stop).
-
-**For each task with `"status": "completed"`:**
+If any task ended `"status": "failed"` (3-attempt TDD exhaustion — see Agent
+Step D below), do NOT merge that task's work; the implementer's hard-stop
+already ends the whole worktree run (see Agent Step D). Otherwise, once
+every task is `"status": "completed"` and Step 3.2's faithfulness verifier
+returns `faithful`:
 
 ```bash
-git merge --squash worktree/<task-id>
-git commit -m "feat(<scope>): <task description>"
+git merge --squash worktree/impl
+git commit -m "feat(<scope>): <summary of all completed tasks>"
+git worktree remove .worktrees/impl --force
+git branch -D worktree/impl
 ```
 
-**For each task with `"status": "failed"`:** do NOT merge. Log in
-`.loop-logs/<id>/logs/summary.md`: `FAILED: <task-id> — see .loop-logs/<id>/error/<task-id>.md`.
+### Final worktree sweep (mandatory — both interaction modes, after squash-merge)
 
-### Final worktree sweep (mandatory — both interaction modes)
-
-After all merges, remove **every** worktree (completed and failed — failed work is
-already captured in its error log):
+Remove the implementer's worktree:
 
 ```bash
-for wt in $(git worktree list --porcelain | awk '/^worktree/ {print $2}' | grep '/.worktrees/'); do
-  git worktree remove --force "$wt"
-done
+git worktree remove --force .worktrees/impl 2>/dev/null || true
 git worktree prune
-git branch --list 'worktree/*' | xargs -r git branch -D
+git branch -D worktree/impl 2>/dev/null || true
 rmdir .worktrees 2>/dev/null || true
 ```
 
-**Gate:** `git worktree list` shows no path under `.worktrees/`, and `.worktrees/`
-is gone. If any remain, STOP and print which worktree could not be removed.
+**Gate:** `git worktree list` shows no path under `.worktrees/`. If it
+remains, STOP and print which worktree could not be removed.
 
-**After all merges**, verify the history is linear:
+Verify the history is linear:
 
 ```bash
 git log --oneline
@@ -357,32 +367,98 @@ No merge commits should appear. If any do, the wrong merge strategy was used.
 
 ---
 
-## Stage 1 Integrity Gate
+## Stage 3 Task-Completion Gate
 
-**This check is mandatory. Do not advance to Stage 2 until it passes.**
+**This check is mandatory. Do not advance to Step 3.2 (faithfulness
+verification) until it passes.**
 
-Read every `.loop-logs/<id>/tasks/<task-id>.json` for all tasks parsed in Stage 0.
+Read every `.loop-logs/<id>/tasks/<task-id>.json` for all implementation
+tasks parsed in Stage 2 Step 2.2.
 
 **Check 1 — Status**
 Every task file must have `"status": "completed"` or `"status": "failed"`.
-Any file still showing `"status": "pending"` or `"status": "in_progress"` means the
-orchestrator or agent did not complete its bookkeeping.
+Any file still showing `"status": "pending"` or `"status": "in_progress"`
+means the implementer did not complete its bookkeeping.
 
 **Check 2 — Log files**
 Every task with `"status": "completed"` must have a corresponding file at
-`.loop-logs/<id>/logs/<task-id>.md`.
+`.loop-logs/<id>/logs/impl.md` covering that task's attempts.
 
 **If either check fails**, print exactly:
 
 ```
-STOP — Stage 1 integrity check failed.
+STOP — Stage 3 task-completion check failed.
 
 Missing or stale bookkeeping detected:
 <task-id>: status="pending" (expected: completed | failed)
-<task-id>: missing .loop-logs/<id>/logs/<task-id>.md
 ```
 
-Do NOT proceed to Stage 2. Investigate which agent or orchestrator step was skipped.
-Verify the agent prompt included steps A–D verbatim. Under this design, agents always write log files directly — the orchestrator never writes them.
+Do NOT proceed. Verify the implementer's prompt included Steps A–D verbatim.
 
-**If all checks pass:** Print `Integrity gate passed — advancing to Stage 2.` and proceed.
+**If all checks pass:** proceed to Step 3.2 (Faithfulness Verification).
+
+---
+
+## Step 3.2 — Faithfulness Verification
+
+After the Stage 3 Task-Completion Gate passes, before Stage 3 is considered
+complete, spawn a **faithfulness verifier** subagent — separate from, and
+narrower than, Stage 4's spec-acceptance-criteria verifier. It reviews the
+cumulative worktree diff (`.worktrees/impl`, uncommitted squash not yet
+done) against `plan_path`:
+
+- Was each task implemented as described — not partially, not differently?
+- Are the tests real assertions of behavior, not gutted, deleted, or
+  trivial?
+- Is there scope creep — changes beyond what the tasks specify?
+
+Returns:
+
+```json
+{
+  "verdict": "faithful" | "unfaithful",
+  "findings": [
+    { "task_id": "<task-id>", "scope": "task" | "architecture", "issue": "<description>" }
+  ]
+}
+```
+
+`scope: "task"` means the issue is local to one task's implementation
+approach. `scope: "architecture"` means the root cause affects the plan's
+design and likely touches multiple tasks.
+
+If `verdict == "faithful"`: proceed to Squash Merge (above).
+
+## Step 3.3 — Faithfulness Fix Loop (cap 2)
+
+```
+round = 0
+LOOP:
+  round += 1
+  If round > 2:
+    Write .loop-logs/<id>/error/faithfulness-loop-exhausted.md with both
+    rounds' findings verbatim, plus the current worktree diff.
+    git -C .worktrees/impl add -A
+    git -C .worktrees/impl commit -m "wip: faithfulness loop exhausted after 2 rounds"
+    STOP the whole pipeline (uniform — both interaction modes, no juncture).
+  Spawn an Opus planner subagent (model: Opus). It receives the faithfulness
+  verifier's findings and plan_path. It:
+    1. Deep-dives the root cause of each finding (why did the implementer
+       produce this — ambiguous task wording? missing constraint? an
+       interface mismatch between tasks?).
+    2. Revises plan_path:
+       - For each finding with scope "task": append a `#### Revision <round>`
+         subsection inside the affected `### Task N:` block — root cause,
+         what was wrong, the revised Files/Interfaces/Steps.
+       - For each finding with scope "architecture": append to a
+         `## Plan Revision History` section (create it, placed after
+         `## Global Constraints` and before the first `### Task`, if
+         absent) — root cause, what was wrong, the revised approach, and
+         which tasks it affects.
+  Re-invoke the implementer (same worktree, .worktrees/impl) to redo the
+  affected task(s) per the revised plan (Agent Steps A–D from Stage 3,
+  scoped to just those task_ids).
+  Re-run the Stage 3 Task-Completion Gate, then the faithfulness verifier.
+  If faithful: exit LOOP → proceed to Squash Merge.
+  Otherwise: GOTO LOOP.
+```

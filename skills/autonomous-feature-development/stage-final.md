@@ -1,6 +1,6 @@
-# Stage 4: Final Commit
+# Stage 7: Final Commit
 
-## Step 4.1 — Final lint and format
+## Step 7.1 — Final lint and format
 
 ```bash
 <lint_cmd>    # must exit 0
@@ -9,7 +9,7 @@
 
 If either fails, fix the issues before proceeding.
 
-## Step 4.2 — Write summary
+## Step 7.2 — Write summary
 
 Write `.loop-logs/<id>/logs/summary.md`:
 
@@ -41,18 +41,28 @@ Write `.loop-logs/<id>/logs/summary.md`:
 **Actionable issues fixed:** N
 **Minor issues deferred (NOT handled yet):**
 <list each deferred minor from the final review round, or "none">
+
+## E2E
+
+Read `.loop-logs/<id>/tasks/e2e-state.json`.
+
+- `status == "skipped"`: **E2E:** skipped — <reason>
+- `status == "passed"`: **E2E:** <rounds_completed> round(s), scenarios in <scenario_doc>
 ```
 
-## Step 4.2a — Write decisions log
+## Step 7.2a — Write decisions log
 
 Write `.loop-logs/<id>/logs/decisions.md`, consolidating:
 
 - Every `### Key Decisions` bullet from every attempt in every
-  `.loop-logs/<id>/logs/<task-id>.md`
+  `.loop-logs/<id>/logs/impl.md`
 - The root cause from any failed attempt (`Outcome: failed — <root cause>`), even
   if a later attempt on the same task succeeded
 - Each fixed issue's Phase 1 root-cause/plan from every
   `.loop-logs/<id>/code-review/round-*.md`
+- Every bullet from `<spec-basename>-assumptions.md` (Stage 1, if present)
+- Every `#### Revision N` subsection and any `## Plan Revision History`
+  entry in `plan_path` (Stage 3, if present)
 
 ```markdown
 # Decisions & Challenges — <id>
@@ -78,22 +88,38 @@ below; otherwise append it:
 - <issue-id>: <root cause/plan from Phase 1>
 ```
 
-## Step 4.2b — Generate reviewer report
+If Stage 1 produced an assumptions file, append:
+
+```markdown
+## Plan assumptions (Stage 1)
+
+- <bullet from <spec-basename>-assumptions.md>
+```
+
+If Stage 3 recorded any revisions, append:
+
+```markdown
+## Plan revisions (Stage 3 faithfulness loop)
+
+- <task-id or "architecture">: <root cause from #### Revision N or ## Plan Revision History>
+```
+
+## Step 7.2b — Generate reviewer report
 
 Invoke the `explain-changes` skill in diff-review mode, passing: `id`,
-`plan_path`, `spec_path`, `base_sha` (recorded in `stage-impl.md` Step 0.3), and
+`plan_path`, `spec_path`, `base_sha` (recorded in `stage-impl.md` Step 2.1), and
 the paths written above (`summary.md`, `decisions.md`, any
 `code-review/round-*.md`, any `error/*.md`). Output goes to
 `.loop-logs/<id>/reports/`.
 
 Capture what it returns — `Report generated: <path>` on success, or the failure
-line — as `<report_path>` for Step 4.3 (empty if it failed).
+line — as `<report_path>` for Step 7.3 (empty if it failed).
 
 This step must never block the pipeline: if `explain-changes` is unavailable,
 errors, or does not produce a file, print one line noting the failure and
-continue to Step 4.3 regardless.
+continue to Step 7.3 regardless.
 
-## Step 4.3 — Commit or hand off
+## Step 7.3 — Commit or hand off
 
 **`interaction_mode == autonomous`:** stage everything (`git add -A`) and commit.
 
@@ -105,7 +131,7 @@ continue to Step 4.3 regardless.
   Failed tasks:
   <task-id-1>: see .loop-logs/<id>/error/<task-id-1>.md"
   ```
-Then proceed to Step 4.4.
+Then proceed to Step 7.4.
 
 **`interaction_mode == human-in-loop`:** do NOT commit. Collapse the run's commits
 into unstaged working-tree changes for the human to review:
@@ -115,22 +141,22 @@ git reset --mixed <base_sha>
 ```
 
 Confirm `git status` shows unstaged changes and `git log` shows no new commits since
-`<base_sha>`. **Skip Step 4.4.** Print:
+`<base_sha>`. **Skip Step 7.4.** Print:
 
 ```
 Implementation complete. All changes are unstaged on <branch> — review and commit manually.
 Summary: .loop-logs/<id>/logs/summary.md
-Report: <report_path from Step 4.2b>
+Report: <report_path from Step 7.2b>
 ```
 
-Include the `Report:` line only if Step 4.2b produced a path; omit it entirely if
+Include the `Report:` line only if Step 7.2b produced a path; omit it entirely if
 `explain-changes` failed or was unavailable.
 
 Then stop.
 
-## Step 4.4 — Branch completion
+## Step 7.4 — Branch completion
 
-Only runs when `interaction_mode == autonomous` (human-in-loop stopped at Step 4.3).
+Only runs when `interaction_mode == autonomous` (human-in-loop stopped at Step 7.3).
 
 Run `superpowers:finishing-a-development-branch`. If the `superpowers` plugin is
 not installed, stop here and tell the user to install it (see the plugin README) —
