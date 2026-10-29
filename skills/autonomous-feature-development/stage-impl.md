@@ -138,6 +138,29 @@ subagent. The verifier reports blocked criteria as facts; the orchestrator alone
 translates them into mode policy (see `stage-verify.md`). Mode B has no `spec_path` —
 skip the AC-scan; the verify-time per-AC backstop still applies.
 
+### Step 2.6 — Resolve implementation mode
+
+`implementation_mode` = `single` | `multi`. Resolve in precedence order:
+
+1. The invoking prompt (e.g. "fan out subagents for each task" → `multi`;
+   "single subagent" → `single`). Wins for this run only — never written back.
+2. A `## Pipeline` section in `CLAUDE.local.md`:
+
+   ```markdown
+   ## Pipeline
+   - Implementation mode: `single` | `multi`
+   ```
+
+3. `interaction_mode == human-in-loop` only: neither above is set → ask the
+   user once (single subagent, sequential vs one subagent per task, parallel),
+   write the answer into `## Pipeline` in `CLAUDE.local.md` (create the file
+   or section if absent), continue.
+4. Otherwise `single` (default).
+
+`autonomous` never asks and never writes `CLAUDE.local.md`; it reads it if
+present. Print `Implementation mode: <single|multi>`. This is a Stage 3
+orchestration choice only — never inject it into subagents.
+
 ---
 
 ## Orchestrator: Agent Output Schema and File Ownership
@@ -201,6 +224,15 @@ the "Per-Task Instructions" section below. Agents write `LOG_PATH` and
 ---
 
 ## Stage 3: Implementation
+
+Branch on `implementation_mode` (Step 2.6):
+
+- `single` — this section (default).
+- `multi` — jump to **Stage 3 (multi mode)** at the end of this file. The
+  per-task instructions (Steps A–D), Task-Completion Gate, and faithfulness
+  verifier below are shared; the multi section lists the differences.
+
+### Stage 3 (single mode)
 
 **Single implementer subagent, one worktree for the whole stage** — not one
 worktree per task, not parallel agents. It works through every remaining
@@ -462,3 +494,88 @@ LOOP:
   If faithful: exit LOOP → proceed to Squash Merge.
   Otherwise: GOTO LOOP.
 ```
+
+---
+
+## Stage 3 (multi mode)
+
+Only when `implementation_mode == multi`. One implementer subagent **per
+task**, parallel within a wave, each in its own worktree. Follows
+`../../rules/git-linear-history.md` — squash merge only.
+
+### Waves
+
+Build from the optional `**Depends on:**` lines (validated in Stage 1):
+
+- Wave 1 = tasks with no dependencies. Wave k = tasks whose dependencies
+  were all merged in earlier waves.
+- No `Depends on:` anywhere → one wave containing every task.
+- Tasks with `"status": "completed"` (resume guard) count as merged.
+
+### Per wave
+
+1. For each task: write task JSON `"status": "in_progress"`,
+   `"worktree": ".worktrees/<task-id>"`; inject `LOG_PATH`
+   (`.loop-logs/<id>/logs/<task-id>.md`) and `ERROR_LOG_PATH`
+   (`.loop-logs/<id>/error/<task-id>.md`), absolute. Spawn all of the wave's
+   implementers **simultaneously**. Each runs Steps A–D, with this worktree
+   step before Step C (switch into it for all remaining steps):
+
+   ```bash
+   git worktree add .worktrees/<task-id> -b worktree/<task-id>
+   ```
+
+   Branch from the working-branch tip at spawn time (includes earlier waves).
+
+2. **Merge as each finishes — do not wait for the wave.** The orchestrator
+   keeps a merge queue (first finished, first merged; one merge or resolver
+   at a time). On a `completed` result, write the task JSON from the schema
+   output, then:
+
+   ```bash
+   git merge --squash worktree/<task-id>
+   git commit -m "feat(<scope>): <task description>"
+   git worktree remove --force .worktrees/<task-id>
+   git branch -D worktree/<task-id>
+   ```
+
+3. **Conflict:** do not edit code (Hard Rule 6). Spawn a **conflict-resolver
+   subagent** with the conflicted files, the plan sections of the merging
+   task and of the tasks already merged that touch those files, `spec_path`,
+   and the resolved `<lint_cmd>`/`<test_cmd>`. It resolves in the working
+   tree, runs lint + tests, and returns:
+
+   ```json
+   { "status": "resolved" | "unsure", "notes": "<what was decided and why>" }
+   ```
+
+   - `resolved`: orchestrator commits as above, continues the queue.
+   - `unsure` (cannot preserve both tasks' intent): write
+     `.loop-logs/<id>/error/merge-conflict-<task-id>.md` (conflicted files,
+     resolver notes, `git diff`), `git merge --abort` / `git reset --hard`
+     the failed merge, STOP the pipeline — both interaction modes.
+
+4. **Task failure** (`"status": "failed"` after 3 attempts): do not merge it.
+   In-flight tasks run to completion and merge normally. Start no further
+   tasks or waves (a task depending on the failed one never starts). Skip the
+   wave's faithfulness check. Write
+   `.loop-logs/<id>/error/multi-wave-stopped.md` listing failed, merged, and
+   never-started tasks, then STOP — both interaction modes. Re-running
+   resumes via the Step 2.3 resume guard.
+
+5. After every task in the wave is merged: run the **Stage 3 Task-Completion
+   Gate** (scoped to the wave's tasks), then the **faithfulness verifier**
+   (Step 3.2) on the cumulative diff of the wave's merged commits against the
+   wave's plan sections. If unfaithful, run the Step 3.3 fix loop (cap 2)
+   with these differences: the implementer redo happens in a fresh worktree
+   `.worktrees/<task-id>` per affected task, and fixes are squash-merged
+   through the same queue (and conflict resolver). Exhaustion commits
+   nothing extra: write `error/faithfulness-loop-exhausted.md` and STOP.
+
+6. Proceed to the next wave.
+
+### After the last wave
+
+Run the **Final worktree sweep** (above, shared) — the per-task removals
+above make it a safety net. Verify `git log --oneline` shows no merge
+commits. Then continue to Stage 4.

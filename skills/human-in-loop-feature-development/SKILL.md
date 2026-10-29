@@ -13,7 +13,14 @@ capability gaps.
 
 Set `interaction_mode = human-in-loop`, then run `autonomous-feature-development`.
 That engine owns every stage; this skill only sets the interaction contract. The
-engine branches on `interaction_mode` at three orchestrator junctures:
+engine branches on `interaction_mode` at three orchestrator junctures, plus one
+one-time ask:
+
+0. **Implementation mode** (Stage 2 Step 2.6) — if neither the prompt nor
+   `CLAUDE.local.md` (`## Pipeline` → `Implementation mode`) sets
+   `single` | `multi`, ask the user once and store the answer in `CLAUDE.local.md`.
+   Default `single` if the prompt says nothing and the user has no preference.
+
 
 1. **Unresolved command** (Stage 0) — ask the user, persist to `CLAUDE.md`, continue.
 2. **Playwright CLI unavailable for a UI acceptance criterion** (Stage 2) — write a
