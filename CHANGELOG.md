@@ -3,6 +3,12 @@
 All notable changes to this plugin are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `implementation_mode = single | multi` input for `autonomous-feature-development` / `human-in-loop-feature-development` (Stage 2 Step 2.6). `multi` fans out one subagent per task in its own worktree, in dependency waves (optional `**Depends on:**` plan field, validated at the Stage 1 gate). Tasks are squash-merged as each finishes; a conflict-resolver subagent resolves conflicts (hard-stop if unsure); faithfulness check runs once per wave. Default `single` (unchanged behavior). `human-in-loop` asks once and stores the choice in `CLAUDE.local.md`.
+
 ## [0.6.0]
 
 ### Added

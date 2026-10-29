@@ -27,6 +27,21 @@ user to install it** (see the plugin README) rather than failing silently:
   skip it and proceed to commit/handoff — report generation never blocks the
   pipeline.
 
+## Implementation Mode
+
+`implementation_mode` = `single` (default) | `multi`, resolved in Stage 2 Step 2.6
+(`stage-impl.md`): invoking prompt, then `CLAUDE.local.md` `## Pipeline`, then
+(`human-in-loop` only) ask once and store, else `single`.
+
+- `single` — one implementer subagent works all tasks sequentially in one worktree.
+- `multi` — one subagent per task in its own worktree, parallel within dependency
+  waves (`**Depends on:**` in the plan); the orchestrator squash-merges each task
+  as it finishes, a conflict-resolver subagent handles conflicts (hard-stop if
+  unsure), and the faithfulness check runs once per wave.
+
+It is not an `interaction_mode` juncture beyond the one-time ask, and subagents
+never see it.
+
 ## Mode Selection
 
 ```dot
@@ -51,7 +66,8 @@ human handoffs. It is distinct from the Mode A / Mode B pipeline selection above
   Clarify with the human on a missing capability; pause and wait for input when
   human action is needed.
 
-The orchestrator branches on `interaction_mode` at exactly four junctures:
+The orchestrator branches on `interaction_mode` at exactly four junctures
+(plus the one-time `implementation_mode` ask in Stage 2 Step 2.6, human-in-loop only):
 
 1. **Stage 1 plan-gate ambiguity** — the elaboration subagent flags a decision it
    can't resolve alone. `autonomous`: best-guess, recorded in
@@ -84,7 +100,7 @@ Read and execute each stage file in order:
 | Stage | File                     | Description                                                                                                                                                                                                                                                                                        |
 | ----- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1     | `./stage-plan-gate.md`   | Validate inputs, compute run `id`, gate-check `plan_path` for detail, classify/route non-implementation tasks, elaborate + review if needed |
-| 2 + 3 | `./stage-impl.md`        | Guard/setup, then single-implementer sequential implementation with a faithfulness-verifier fix loop (≤2 rounds) |
+| 2 + 3 | `./stage-impl.md`        | Guard/setup, then implementation (`single`: one implementer, sequential; `multi`: per-task parallel subagents by wave) with a faithfulness-verifier fix loop (≤2 rounds) |
 | 4 + 5 | `./stage-review-fix.md`  | **Capped verify↔review loop** (≤5 iterations): each iteration runs the VERIFY step in `./stage-verify.md`, then spawns a single multi-skill review agent, writes a code-review log, fixes actionable (blocking+important) issues via a severity-gated pipeline, and re-verifies. Exits when a review raises zero actionable issues. |
 | 6     | `./stage-e2e.md`         | E2E scenario planning + implementation with a faithfulness-verifier fix loop (≤2 rounds); skipped entirely if the project has no E2E tooling |
 | 7     | `./stage-final.md`       | Lint, format, summary, final commit                                                                                                                                                                                                                                                                |

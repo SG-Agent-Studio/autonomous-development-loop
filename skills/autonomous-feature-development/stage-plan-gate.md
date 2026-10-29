@@ -124,7 +124,14 @@ Step 1.5 exited with a `SHIP IT` review verdict.
 `### Task N:` numbered heading is tagged `non-implementation` — every such
 task was moved to `## Deferred to Verification` in Step 1.3.
 
-If either check fails, print exactly:
+**Check 3 — Dependencies (optional field).** Each `### Task N:` block may
+carry a `**Depends on:** Task N[, Task M]` line (used by `multi`
+implementation mode — see `stage-impl.md` Step 2.6). If present anywhere:
+every referenced task must exist among the remaining `### Task N:` headings
+(a dependency on a task moved to `## Deferred to Verification` is invalid),
+and the dependency graph must be acyclic. The field is never required.
+
+If any check fails, print exactly:
 
 ```
 STOP — Stage 1 completion gate failed.
@@ -135,5 +142,5 @@ STOP — Stage 1 completion gate failed.
 Do NOT proceed to Stage 2. Investigate which agent or orchestrator step was
 skipped.
 
-**If both checks pass:** Print `Plan gate passed — advancing to Stage 2.`
+**If all checks pass:** Print `Plan gate passed — advancing to Stage 2.`
 and proceed.
